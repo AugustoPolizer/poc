@@ -8,7 +8,8 @@
 - CMD: IF \ ELSE \ FUNCCALL \ RETURN \ ATTRIBUITION
 - IF: 'if' '(' EXPRESSION COMPOPBI EXPRESSION ')' '{' (STATEMENT)* '}' 
 - ELSE: 'else' '{' (STATEMENT)* '}' 
-- FUNCCALL: NAME '(' FUNCPARAM* ')' ';' 
+- FUNCCALL: NAME '(' PARAMS? ')' ';' 
+- PARAMS: NAME (',' NAME)*
 - RETURN: 'return' EXPRESSION ';'
 - ATTRIBUITION: NAME '=' EXPRESSION ';'
 - EXPRESSION: EXPRESSION BINARYOP EXPRESSION | '(' EXPRESSION ')' | VALUE
@@ -16,10 +17,10 @@
 - BINARYOP: '+' | '-' | '*' | '/' | BOOLBIOP
 - LITERAL: INT | FLOAT | STRING
 - FUNCTION: NAME '(' FUNPARAM? ') '{' STATEMENT*'}'
-- FUNCPARAM : (NAME ':' NAME) (',' FUNCPARAM)*
+- FUNCPARAMS : NAME ':' NAME (',' NAME ':' NAME) 
 - VARIABLE: ('const' | 'let') NAME ':' ( SCALAR | ARRAY) ';'
 - SCALAR: NAME ('=' INT | FLOAT | STRING)?
-- ARRAY: '[' NAME ']' ('=' '[' (ELEMENTS)']')?
+- ARRAY: '[' NAME ']' ('=' '[' ELEMENTS ']')?
 - ELEMENTS: VALUE (',' VALUE)*
 - NAME: ALPA (ALPA)*
 - UNARYOP: '-' \ '!'
