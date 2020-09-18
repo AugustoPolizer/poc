@@ -35,7 +35,7 @@
 - FLOAT: NUMBER* '.' NUMBER+
 
 # Code Example
-
+```typescript
 function fatorial(n : int) {
     if ( n == 1 ) {
         return 1;
@@ -43,3 +43,5 @@ function fatorial(n : int) {
         return n * fatorial(n - 1);
     }
 }
+```
+
