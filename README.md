@@ -11,7 +11,7 @@
 - IF: 'if' '(' EXPRESSION COMPOPBI EXPRESSION ')' '{' (STATEMENT)* '}' 
 - ELSE: 'else' '{' (STATEMENT)* '}' 
 - FUNCCALL: NAME '(' PARAMS? ')' ';' 
-- FUNCTION: NAME '(' FUNPARAM? ') '{' STATEMENT*'}'
+- FUNCTION: NAME '(' FUNPARAM? ') -> NAME '{' STATEMENT*'}'
 - FUNCPARAMS : NAME ':' NAME (',' NAME ':' NAME) 
 - PARAMS: NAME (',' NAME)*
 - RETURN: 'return' EXPRESSION ';'
@@ -21,9 +21,9 @@
 - BINARYOP: '+' | '-' | '*' | '/' | BOOLBIOP
 - LITERAL: INT | FLOAT | STRING
 - VARIABLE: ('const' | 'let') NAME ':' ( SCALAR | ARRAY) ';'
-- SCALAR: NAME ('=' INT | FLOAT | STRING)?
+- SCALAR: NAME ('=' LITERAL | VALUE)?
 - ARRAY: '[' NAME ']' ('=' '[' ELEMENTS ']')?
-- ELEMENTS: VALUE (',' VALUE)*
+- ELEMENTS: (VALUE | LITERAL) (',' (VALUE | LITERAL))*
 - NAME: ALPA (ALPA)*
 - UNARYOP: '-' | '!'
 - BOOLBIOP: '&&'|'||'
@@ -36,7 +36,7 @@
 
 # Code Example
 ```typescript
-function fatorial(n : int) {
+function fatorial(n : int) -> int {
     if ( n == 1 ) {
         return 1;
     } else {
