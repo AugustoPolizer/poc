@@ -4,6 +4,8 @@ mod lexer {
         code_iterator: std::iter::Peekable<std::str::Chars<'a>>,
     }
 
+    #[derive(PartialEq)]
+    #[derive(Debug)]
     enum TokenType {
         NAME,
         LPARENTHESES,
@@ -14,8 +16,9 @@ mod lexer {
         RBRACE,
         SEMICOLON,
         EOF,
-        UNKNOWN
+        UNKNOWN 
     }
+
 
     struct Token {
         token_type: TokenType,
@@ -25,6 +28,12 @@ mod lexer {
     impl Token {
         fn new(token_type: TokenType, text: String) -> Token {
             Token { token_type, text }
+        }
+    }
+
+    impl std::cmp::PartialEq for Token {
+        fn eq(&self, other: &Self) -> bool {
+            self.text == other.text && self.token_type == other.token_type
         }
     }
 
@@ -56,7 +65,6 @@ mod lexer {
                     };
                 }
             }
-            println!("valor do lookahead: {}", lookahead);
 
             // FIXME: Não retornar NAME para todas as cadeias que começam com caracteres
             // TODO: Refator, extrair metodo
