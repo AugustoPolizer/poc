@@ -120,6 +120,12 @@ mod lexer {
     mod tests {
         use super::*;
 
+        fn assert_token_equal(lexer: &mut Lexer, text: &str, token_type: TokenType){
+            let token = lexer.get_token();
+            assert_eq!(token.text, text);
+            assert_eq!(token.token_type, token_type);
+        }
+
         #[test]
         fn get_token_text_value() {
             let code = r"
@@ -127,20 +133,21 @@ mod lexer {
                     return 1;
                 }
                 ";
-            let mut lex: Lexer = Lexer::new(&code);
-            assert_eq!(lex.get_token().text, "function");
-            assert_eq!(lex.get_token().text, "one");
-            assert_eq!(lex.get_token().text, "(");
-            assert_eq!(lex.get_token().text, ")");
-            assert_eq!(lex.get_token().text, "UNK");
-            assert_eq!(lex.get_token().text, "UNK");
-            assert_eq!(lex.get_token().text, "int");
-            assert_eq!(lex.get_token().text, "{");
-            assert_eq!(lex.get_token().text, "return");
-            assert_eq!(lex.get_token().text, "UNK");
-            assert_eq!(lex.get_token().text, ";");
-            assert_eq!(lex.get_token().text, "}");
-            assert_eq!(lex.get_token().text, "EOF");
+            let mut lexer: Lexer = Lexer::new(&code);
+
+            assert_token_equal(&mut lexer, "function", TokenType::NAME);
+            assert_token_equal(&mut lexer, "one", TokenType::NAME);
+            assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESES);
+            assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
+            assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
+            assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
+            assert_token_equal(&mut lexer, "int", TokenType::NAME);
+            assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
+            assert_token_equal(&mut lexer, "return", TokenType::NAME);
+            assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
+            assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
+            assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
+            assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
         }
     }
 }
