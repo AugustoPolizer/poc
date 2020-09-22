@@ -53,7 +53,7 @@ mod lexer {
             Lexer {
                 code_iterator: raw_code.chars().peekable(),
                 keywords: ["function", "return", "if", "else", "let", "const"].iter().cloned().collect(),
-                types: ["int", "float", "string"].iter().cloned().collect()
+                types: ["int", "float", "void", "string"].iter().cloned().collect()
             }
         }
 
@@ -196,6 +196,7 @@ mod lexer {
                     Token::new(TokenType::NOT, buffer) 
                 }
                 '+' | '*' | '/' => {
+                    self.code_iterator.next();
                    Token::new(TokenType::OP, String::from(lookahead))
                 }
                 ';' => {
@@ -204,7 +205,7 @@ mod lexer {
                 }
                 ':' => {
                     self.code_iterator.next();
-                    Token::new(TokenType::SEMICOLON, String::from(":")) 
+                    Token::new(TokenType::COLON, String::from(":")) 
                 }
                 '(' => {
                     self.code_iterator.next();
@@ -252,24 +253,66 @@ mod lexer {
         }
 
         #[test]
-        fn get_token_01() {
+        fn get_token_simple_function() {
             let code = r"
-                function one() -> int {
+                function simple_function() -> int {
                     return 1;
                 }
                 ";
             let mut lexer: Lexer = Lexer::new(&code);
 
             assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
-            assert_token_equal(&mut lexer, "one", TokenType::NAME);
+            assert_token_equal(&mut lexer, "simple_function", TokenType::NAME);
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESES);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
-            assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
-            assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
+            assert_token_equal(&mut lexer, "->", TokenType::ARROW);
             assert_token_equal(&mut lexer, "int", TokenType::TYPE);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "1", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
+            assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
+            assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
+        }
+        #[test]
+        fn get_token_attribution() {
+            let code = r"
+            function attributionTest() -> void {
+                const a : int = 1;
+                const b : float = 3.14;
+                let c : float = a + b;
+            }";
+            let mut lexer: Lexer = Lexer::new(&code);
+            
+            assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "attributionTest", TokenType::NAME);
+            assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESES);
+            assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
+            assert_token_equal(&mut lexer, "->", TokenType::ARROW);
+            assert_token_equal(&mut lexer, "void", TokenType::TYPE);
+            assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
+            assert_token_equal(&mut lexer, "const", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "a", TokenType::NAME);
+            assert_token_equal(&mut lexer, ":", TokenType::COLON);
+            assert_token_equal(&mut lexer, "int", TokenType::TYPE);
+            assert_token_equal(&mut lexer, "=", TokenType::ATTR);
+            assert_token_equal(&mut lexer, "1", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
+            assert_token_equal(&mut lexer, "const", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "b", TokenType::NAME);
+            assert_token_equal(&mut lexer, ":", TokenType::COLON);
+            assert_token_equal(&mut lexer, "float", TokenType::TYPE);
+            assert_token_equal(&mut lexer, "=", TokenType::ATTR);
+            assert_token_equal(&mut lexer, "3.14", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
+            assert_token_equal(&mut lexer, "let", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "c", TokenType::NAME);
+            assert_token_equal(&mut lexer, ":", TokenType::COLON);
+            assert_token_equal(&mut lexer, "float", TokenType::TYPE);
+            assert_token_equal(&mut lexer, "=", TokenType::ATTR);
+            assert_token_equal(&mut lexer, "a", TokenType::NAME);
+            assert_token_equal(&mut lexer, "+", TokenType::OP);
+            assert_token_equal(&mut lexer, "b", TokenType::NAME);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
