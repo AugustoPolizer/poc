@@ -2,12 +2,15 @@ mod lexer {
 
     struct Lexer<'a> {
         code_iterator: std::iter::Peekable<std::str::Chars<'a>>,
+        keywords: std::collections::HashSet<&'static str>,
+        types: std::collections::HashSet<&'static str>
     }
 
-    #[derive(PartialEq)]
-    #[derive(Debug)]
+    #[derive(PartialEq, Debug)]
     enum TokenType {
         NAME,
+        KEYWORD,
+        TYPE,
         LPARENTHESES,
         RPARENTHESES,
         LBRACK,
@@ -41,6 +44,8 @@ mod lexer {
         fn new(raw_code: &'a str) -> Lexer<'a> {
             Lexer {
                 code_iterator: raw_code.chars().peekable(),
+                keywords: ["function", "return", "if", "else", "let", "const"].iter().cloned().collect(),
+                types: ["int", "float", "string"].iter().cloned().collect()
             }
         }
 
@@ -66,7 +71,6 @@ mod lexer {
                 }
             }
 
-            // FIXME: Não retornar NAME para todas as cadeias que começam com caracteres
             // TODO: Refator, extrair metodo
             let result = match lookahead {
                 'a'..='z' | 'A'..='Z' => {
@@ -82,6 +86,11 @@ mod lexer {
                         if !lookahead.is_ascii_alphabetic() && !(lookahead == '_') {
                             break
                         }
+                    }
+                    if self.keywords.contains(buffer.as_str()) {
+                        return Token::new(TokenType::KEYWORD, buffer);
+                    } else if self.types.contains(buffer.as_str()){
+                        return Token::new(TokenType::TYPE, buffer);
                     }
                     Token::new(TokenType::NAME, buffer)
                 }
@@ -135,7 +144,7 @@ mod lexer {
         }
 
         #[test]
-        fn get_token_text_value() {
+        fn get_token_01() {
             let code = r"
                 function one() -> int {
                     return 1;
@@ -143,15 +152,15 @@ mod lexer {
                 ";
             let mut lexer: Lexer = Lexer::new(&code);
 
-            assert_token_equal(&mut lexer, "function", TokenType::NAME);
+            assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "one", TokenType::NAME);
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESES);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
             assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
             assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
-            assert_token_equal(&mut lexer, "int", TokenType::NAME);
+            assert_token_equal(&mut lexer, "int", TokenType::TYPE);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
-            assert_token_equal(&mut lexer, "return", TokenType::NAME);
+            assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
