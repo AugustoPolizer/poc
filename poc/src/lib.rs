@@ -274,6 +274,7 @@ mod lexer {
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
         }
+
         #[test]
         fn get_token_attribution() {
             let code = r"
@@ -317,6 +318,42 @@ mod lexer {
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
         }
+
+        #[test]
+        fn get_token_binary_op() {
+            let code = r"
+                function operators() -> float {
+                    return (500.01 + 3) * 2.015 + (1 / 3);
+                }
+                ";
+            
+            let mut lexer: Lexer = Lexer::new(&code);
+           
+            assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "operators", TokenType::NAME);
+            assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESES);
+            assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
+            assert_token_equal(&mut lexer, "->", TokenType::ARROW);
+            assert_token_equal(&mut lexer, "float", TokenType::TYPE);
+            assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
+            assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESES);
+            assert_token_equal(&mut lexer, "500.01", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "+", TokenType::OP);
+            assert_token_equal(&mut lexer, "3", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
+            assert_token_equal(&mut lexer, "*", TokenType::OP);
+            assert_token_equal(&mut lexer, "2.015", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "+", TokenType::OP);
+            assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESES);
+            assert_token_equal(&mut lexer, "1", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "/", TokenType::OP);
+            assert_token_equal(&mut lexer, "3", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
+            assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
+            assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
+        }
+
     }
 }
 
