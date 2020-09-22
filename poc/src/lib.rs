@@ -13,6 +13,7 @@ mod lexer {
         TYPE,
         NUMBER,
         STRING,
+        ATTR,
         COMPOP,
         LPARENTHESES,
         RPARENTHESES,
@@ -138,6 +139,20 @@ mod lexer {
                     lookahead = match self.code_iterator.peek() {
                         Some(c) => *c,
                         None => return Token::new(TokenType::COMPOP, buffer)
+                    };
+                    if lookahead == '=' {
+                        buffer.push(lookahead);
+                        self.code_iterator.next();
+                    }
+                    Token::new(TokenType::COMPOP, buffer)
+                }
+                '=' => {
+                    let mut buffer = String::new();
+                    buffer.push(lookahead);
+                    self.code_iterator.next();
+                    lookahead = match self.code_iterator.peek() {
+                        Some(c) => *c,
+                        None => return Token::new(TokenType::ATTR, buffer)
                     };
                     if lookahead == '=' {
                         buffer.push(lookahead);
