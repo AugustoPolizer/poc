@@ -11,6 +11,7 @@ mod lexer {
         NAME,
         KEYWORD,
         TYPE,
+        NUMBER,
         LPARENTHESES,
         RPARENTHESES,
         LBRACK,
@@ -84,7 +85,7 @@ mod lexer {
                         };
                         // FIXME: Incompleto, tem que checar mais coisas!!
                         if !lookahead.is_ascii_alphabetic() && !(lookahead == '_') {
-                            break
+                            break;
                         }
                     }
                     if self.keywords.contains(buffer.as_str()) {
@@ -93,6 +94,26 @@ mod lexer {
                         return Token::new(TokenType::TYPE, buffer);
                     }
                     Token::new(TokenType::NAME, buffer)
+                }
+                '0'..='9' => {
+                    let mut float = false;
+                    let mut buffer = String::new();
+                    loop {
+                        buffer.push(lookahead);
+                        self.code_iterator.next();
+                        lookahead = match self.code_iterator.peek() {
+                            Some(c) => *c,
+                            None => break,
+                        };
+                        if !lookahead.is_ascii_digit() {
+                            if lookahead == '.' && float == false {
+                                float = true;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    Token::new(TokenType::NUMBER, buffer) 
                 }
                 ';' => {
                     self.code_iterator.next();
@@ -161,7 +182,7 @@ mod lexer {
             assert_token_equal(&mut lexer, "int", TokenType::TYPE);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
-            assert_token_equal(&mut lexer, "UNK", TokenType::UNKNOWN);
+            assert_token_equal(&mut lexer, "1", TokenType::NUMBER);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
