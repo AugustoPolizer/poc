@@ -14,7 +14,6 @@ mod lexer {
         NUMBER,
         STRING,
         ATTR,
-        COMPOP,
         OP,
         ARROW,
         NOT,
@@ -142,58 +141,48 @@ mod lexer {
                     self.code_iterator.next();
                     lookahead = match self.code_iterator.peek() {
                         Some(c) => *c,
-                        None => return Token::new(TokenType::COMPOP, buffer)
-                    };
-                    if lookahead == '=' {
-                        buffer.push(lookahead);
-                        self.code_iterator.next();
-                    }
-                    Token::new(TokenType::COMPOP, buffer)
-                }
-                '=' => {
-                    let mut buffer = String::new();
-                    buffer.push(lookahead);
-                    self.code_iterator.next();
-                    lookahead = match self.code_iterator.peek() {
-                        Some(c) => *c,
-                        None => return Token::new(TokenType::ATTR, buffer)
-                    };
-                    if lookahead == '=' {
-                        buffer.push(lookahead);
-                        self.code_iterator.next();
-                        return Token::new(TokenType::COMPOP, buffer);
-                    }
-                    Token::new(TokenType::ATTR, buffer)
-                }
-                '-' => {
-                    let mut buffer = String::new();
-                    buffer.push(lookahead);
-                    self.code_iterator.next();
-                    lookahead = match self.code_iterator.peek() {
-                        Some(c) => *c,
                         None => return Token::new(TokenType::OP, buffer)
                     };
-                    if lookahead == '>' {
-                        buffer.push(lookahead);
-                        self.code_iterator.next();
-                        return Token::new(TokenType::ARROW, buffer);
-                    }
-                    Token::new(TokenType::OP, buffer) 
-                }
-                '!' => {
-                    let mut buffer = String::new();
-                    buffer.push(lookahead);
-                    self.code_iterator.next();
-                    lookahead = match self.code_iterator.peek() {
-                        Some(c) => *c,
-                        None => return Token::new(TokenType::NOT, buffer)
-                    };
                     if lookahead == '=' {
                         buffer.push(lookahead);
                         self.code_iterator.next();
-                        return Token::new(TokenType::COMPOP, buffer);
                     }
-                    Token::new(TokenType::NOT, buffer) 
+                    Token::new(TokenType::OP, buffer)
+                }
+                '=' => {
+                    self.code_iterator.next();
+                    lookahead = match self.code_iterator.peek() {
+                        Some(c) => *c,
+                        None => return Token::new(TokenType::ATTR, String::from("="))
+                    };
+                    if lookahead != '=' {
+                        return Token::new(TokenType::ATTR, String::from("="));
+                    }
+                    self.code_iterator.next();
+                    Token::new(TokenType::OP, String::from("=="))
+                }
+                '-' => {
+                    self.code_iterator.next();
+                    lookahead = match self.code_iterator.peek() {
+                        Some(c) => *c,
+                        None => return Token::new(TokenType::OP, String::from("-"))
+                    };
+                    if lookahead != '>' {
+                        return Token::new(TokenType::OP, String::from("-"));
+                    }
+                    self.code_iterator.next();
+                    Token::new(TokenType::ARROW, String::from("->")) 
+                }
+                '!' => {
+                    self.code_iterator.next();
+                    lookahead = match self.code_iterator.peek() {
+                        Some(c) => *c,
+                        None => return Token::new(TokenType::NOT, String::from("!"))
+                    };
+                    if lookahead != '=' {
+                        return Token::new(TokenType::NOT, String::from("!"));
+                    }
+                    Token::new(TokenType::NOT, String::from("!=")) 
                 }
                 '+' | '*' | '/' => {
                     self.code_iterator.next();
@@ -352,8 +341,26 @@ mod lexer {
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESES);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
+            assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
         }
 
+        #[test]
+        fn get_token_if_else() {
+            let code = r"
+                function operators(x: int) -> float {
+                    if (x <= 10 && x >= 0) {
+                        return 10;
+                    } else if (x <= 100) {
+                        return 100;
+                    } else {
+                        return 1000; 
+                    }
+                }
+                ";
+            
+            let mut lexer: Lexer = Lexer::new(&code);
+            assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
+        }
     }
 }
 
