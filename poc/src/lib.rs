@@ -12,6 +12,8 @@ mod lexer {
         KEYWORD,
         TYPE,
         NUMBER,
+        STRING,
+        COMPOP,
         LPARENTHESES,
         RPARENTHESES,
         LBRACK,
@@ -20,7 +22,7 @@ mod lexer {
         RBRACE,
         SEMICOLON,
         EOF,
-        UNKNOWN 
+        UNKNOWN
     }
 
 
@@ -83,7 +85,6 @@ mod lexer {
                             Some(c) => *c,
                             None => break,
                         };
-                        // FIXME: Incompleto, tem que checar mais coisas!!
                         if !lookahead.is_ascii_alphabetic() && !(lookahead == '_') {
                             break;
                         }
@@ -94,6 +95,21 @@ mod lexer {
                         return Token::new(TokenType::TYPE, buffer);
                     }
                     Token::new(TokenType::NAME, buffer)
+                }
+                '"' => {
+                    let mut buffer = String::new();
+                    loop {
+                        buffer.push(lookahead);
+                        self.code_iterator.next();
+                        lookahead = match self.code_iterator.peek() {
+                            Some(c) => *c,
+                            None => break,
+                        };
+                        if lookahead == '"' {
+                            break;
+                        }
+                    }
+                    Token::new(TokenType::STRING, buffer)
                 }
                 '0'..='9' => {
                     let mut float = false;
