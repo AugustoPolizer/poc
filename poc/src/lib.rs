@@ -15,6 +15,7 @@ mod lexer {
         STRING,
         ATTR,
         COMPOP,
+        NOT,
         LPARENTHESES,
         RPARENTHESES,
         LBRACK,
@@ -157,8 +158,24 @@ mod lexer {
                     if lookahead == '=' {
                         buffer.push(lookahead);
                         self.code_iterator.next();
+                        return Token::new(TokenType::COMPOP, buffer);
                     }
-                    Token::new(TokenType::COMPOP, buffer)
+                    Token::new(TokenType::ATTR, buffer)
+                }
+                '!' => {
+                    let mut buffer = String::new();
+                    buffer.push(lookahead);
+                    self.code_iterator.next();
+                    lookahead = match self.code_iterator.peek() {
+                        Some(c) => *c,
+                        None => return Token::new(TokenType::NOT, buffer)
+                    };
+                    if lookahead == '=' {
+                        buffer.push(lookahead);
+                        self.code_iterator.next();
+                        return Token::new(TokenType::COMPOP, buffer);
+                    }
+                    Token::new(TokenType::NOT, buffer) 
                 }
                 ';' => {
                     self.code_iterator.next();
