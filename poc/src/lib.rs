@@ -131,6 +131,20 @@ mod lexer {
                     }
                     Token::new(TokenType::NUMBER, buffer) 
                 }
+                '<' | '>'  =>  {
+                    let mut buffer = String::new();
+                    buffer.push(lookahead);
+                    self.code_iterator.next();
+                    lookahead = match self.code_iterator.peek() {
+                        Some(c) => *c,
+                        None => return Token::new(TokenType::COMPOP, buffer)
+                    };
+                    if lookahead == '=' {
+                        buffer.push(lookahead);
+                        self.code_iterator.next();
+                    }
+                    Token::new(TokenType::COMPOP, buffer)
+                }
                 ';' => {
                     self.code_iterator.next();
                     Token::new(TokenType::SEMICOLON, String::from(";")) 
