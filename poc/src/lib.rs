@@ -15,6 +15,8 @@ mod lexer {
         STRING,
         ATTR,
         COMPOP,
+        OP,
+        ARROW,
         NOT,
         LPARENTHESES,
         RPARENTHESES,
@@ -23,6 +25,7 @@ mod lexer {
         LBRACE,
         RBRACE,
         SEMICOLON,
+        COLON,
         EOF,
         UNKNOWN
     }
@@ -162,6 +165,21 @@ mod lexer {
                     }
                     Token::new(TokenType::ATTR, buffer)
                 }
+                '-' => {
+                    let mut buffer = String::new();
+                    buffer.push(lookahead);
+                    self.code_iterator.next();
+                    lookahead = match self.code_iterator.peek() {
+                        Some(c) => *c,
+                        None => return Token::new(TokenType::OP, buffer)
+                    };
+                    if lookahead == '>' {
+                        buffer.push(lookahead);
+                        self.code_iterator.next();
+                        return Token::new(TokenType::ARROW, buffer);
+                    }
+                    Token::new(TokenType::OP, buffer) 
+                }
                 '!' => {
                     let mut buffer = String::new();
                     buffer.push(lookahead);
@@ -177,9 +195,16 @@ mod lexer {
                     }
                     Token::new(TokenType::NOT, buffer) 
                 }
+                '+' | '*' | '/' => {
+                   Token::new(TokenType::OP, String::from(lookahead))
+                }
                 ';' => {
                     self.code_iterator.next();
                     Token::new(TokenType::SEMICOLON, String::from(";")) 
+                }
+                ':' => {
+                    self.code_iterator.next();
+                    Token::new(TokenType::SEMICOLON, String::from(":")) 
                 }
                 '(' => {
                     self.code_iterator.next();
