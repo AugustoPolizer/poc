@@ -16,7 +16,7 @@ mod lexer {
         ATTR,
         OP,
         ARROW,
-        NOT,
+        UNARYOP,
         LPARENTHESES,
         RPARENTHESES,
         LBRACK,
@@ -78,6 +78,23 @@ mod lexer {
                 }
             }
 
+            // Faz o parsing de tokens que precisando de um lookahead igual a 2
+            let mut parsing_tokens = | second_possible_char: char, first_token_type: TokenType, second_token_type: TokenType| -> Token {
+                let mut buffer = String::new();
+                buffer.push(lookahead);
+                self.code_iterator.next();
+                let lookahead_2 = match self.code_iterator.peek() {
+                    Some(c) => *c,
+                    None => return Token::new(first_token_type, buffer)
+                };
+                if lookahead_2 != second_possible_char {
+                    return Token::new(first_token_type, buffer);
+                }
+                buffer.push(lookahead_2);
+                self.code_iterator.next();
+                Token::new(second_token_type, buffer)
+            };
+
             // TODO: Refator, extrair metodo
             let result = match lookahead {
                 'a'..='z' | 'A'..='Z' => {
@@ -135,54 +152,17 @@ mod lexer {
                     }
                     Token::new(TokenType::NUMBER, buffer) 
                 }
-                '<' | '>'  =>  {
-                    let mut buffer = String::new();
-                    buffer.push(lookahead);
-                    self.code_iterator.next();
-                    lookahead = match self.code_iterator.peek() {
-                        Some(c) => *c,
-                        None => return Token::new(TokenType::OP, buffer)
-                    };
-                    if lookahead == '=' {
-                        buffer.push(lookahead);
-                        self.code_iterator.next();
-                    }
-                    Token::new(TokenType::OP, buffer)
+                '<' | '>' =>  {
+                    parsing_tokens('=', TokenType::OP, TokenType::OP)
                 }
                 '=' => {
-                    self.code_iterator.next();
-                    lookahead = match self.code_iterator.peek() {
-                        Some(c) => *c,
-                        None => return Token::new(TokenType::ATTR, String::from("="))
-                    };
-                    if lookahead != '=' {
-                        return Token::new(TokenType::ATTR, String::from("="));
-                    }
-                    self.code_iterator.next();
-                    Token::new(TokenType::OP, String::from("=="))
+                    parsing_tokens('=', TokenType::ATTR, TokenType::OP)
                 }
                 '-' => {
-                    self.code_iterator.next();
-                    lookahead = match self.code_iterator.peek() {
-                        Some(c) => *c,
-                        None => return Token::new(TokenType::OP, String::from("-"))
-                    };
-                    if lookahead != '>' {
-                        return Token::new(TokenType::OP, String::from("-"));
-                    }
-                    self.code_iterator.next();
-                    Token::new(TokenType::ARROW, String::from("->")) 
+                    parsing_tokens('>', TokenType::OP, TokenType::ARROW)
                 }
                 '!' => {
-                    self.code_iterator.next();
-                    lookahead = match self.code_iterator.peek() {
-                        Some(c) => *c,
-                        None => return Token::new(TokenType::NOT, String::from("!"))
-                    };
-                    if lookahead != '=' {
-                        return Token::new(TokenType::NOT, String::from("!"));
-                    }
-                    Token::new(TokenType::NOT, String::from("!=")) 
+                    parsing_tokens('=', TokenType::UNARYOP, TokenType::OP)
                 }
                 '+' | '*' | '/' => {
                     self.code_iterator.next();
