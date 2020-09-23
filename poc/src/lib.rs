@@ -63,7 +63,7 @@ mod lexer {
                 None => return Token::new(TokenType::EOF, String::from("EOF"))
             };
 
-            // Remove whitespaces 
+            // Remove espaços em branco 
             if lookahead == ' ' || lookahead == '\n' || lookahead == '\t' || lookahead == '\r' {
                 self.code_iterator.next();
                 loop {
@@ -119,15 +119,16 @@ mod lexer {
                 '"' => {
                     let mut buffer = String::new();
                     loop {
-                        buffer.push(lookahead);
                         self.code_iterator.next();
                         lookahead = match self.code_iterator.peek() {
                             Some(c) => *c,
                             None => break,
                         };
                         if lookahead == '"' {
+                            self.code_iterator.next();
                             break;
                         }
+                        buffer.push(lookahead);
                     }
                     Token::new(TokenType::STRING, buffer)
                 }
@@ -327,6 +328,31 @@ mod lexer {
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
+        }
+
+        #[test]
+        fn get_token_string() {
+            let code = r#"
+                let nome: string = "Augusto";
+                const nome_completo: string = "Augusto Polizer";
+                "#;
+
+            let mut lexer: Lexer = Lexer::new(&code);
+
+            assert_token_equal(&mut lexer, "let", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "nome", TokenType::NAME);
+            assert_token_equal(&mut lexer, ":", TokenType::COLON);
+            assert_token_equal(&mut lexer, "string", TokenType::TYPE);
+            assert_token_equal(&mut lexer, "=", TokenType::ATTR);
+            assert_token_equal(&mut lexer, "Augusto", TokenType::STRING);
+            assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
+            assert_token_equal(&mut lexer, "const", TokenType::KEYWORD);
+            assert_token_equal(&mut lexer, "nome_completo", TokenType::NAME);
+            assert_token_equal(&mut lexer, ":", TokenType::COLON);
+            assert_token_equal(&mut lexer, "string", TokenType::TYPE);
+            assert_token_equal(&mut lexer, "=", TokenType::ATTR);
+            assert_token_equal(&mut lexer, "Augusto Polizer", TokenType::STRING);
+            assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
         }
 
         #[test]
