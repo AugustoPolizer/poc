@@ -1,6 +1,6 @@
 mod lexer {
 
-    struct Lexer<'a> {
+    pub struct Lexer<'a> {
         code_iterator: std::iter::Peekable<std::str::Chars<'a>>,
         keywords: std::collections::HashSet<&'static str>,
         types: std::collections::HashSet<&'static str>
@@ -48,7 +48,7 @@ mod lexer {
     }
 
     impl<'a> Lexer<'a> {
-        fn new(raw_code: &'a str) -> Lexer<'a> {
+        pub fn new(raw_code: &'a str) -> Lexer<'a> {
             Lexer {
                 code_iterator: raw_code.chars().peekable(),
                 keywords: ["function", "return", "if", "else", "let", "const"].iter().cloned().collect(),
@@ -56,14 +56,14 @@ mod lexer {
             }
         }
 
-        fn get_token(&mut self) -> Token {
+        pub fn get_token(&mut self) -> Token {
 
             let mut lookahead = match self.code_iterator.peek() {
                 Some(c) => *c,
                 None => return Token::new(TokenType::EOF, String::from("EOF"))
             };
 
-            // Remove espaços em branco 
+            // Remove whitespaces 
             if lookahead == ' ' || lookahead == '\n' || lookahead == '\t' || lookahead == '\r' {
                 self.code_iterator.next();
                 loop {
@@ -419,7 +419,26 @@ mod lexer {
     }
 }
 
+mod abstract_syntax_tree {
+
+    struct Ast_node {
+    }
+}
+
+
 mod parser {
+
+    struct Parser<'a>{
+        lexer: crate::lexer::Lexer<'a>
+    }
+
+    impl<'a> Parser<'a> {
+        pub fn new(code: &str) -> Parser {
+           Parser {
+               lexer: crate::lexer::Lexer::new(code)
+           }  
+        }
+    }
 
     #[cfg(test)]
     mod tests {
