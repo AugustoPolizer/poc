@@ -26,6 +26,7 @@ mod lexer {
         SEMICOLON,
         COLON,
         EOF,
+        ROOT,
         UNKNOWN
     }
 
@@ -440,21 +441,21 @@ mod parser {
     }
     
     struct Parser<'a>{
-        lexer: lexer::Lexer<'a>
+        lexer: lexer::Lexer<'a>,
     }
 
     impl<'a> Parser<'a> {
         pub fn new(code: &str) -> Parser {
            Parser {
-               lexer: lexer::Lexer::new(code)
+               lexer: lexer::Lexer::new(code),
            }  
         }
 
         pub fn parse(&mut self) -> Ast_node {
-            let mut root;
-            let mut current_node;
-            let current_token = self.lexer.get_token();
-
+            let mut root = Ast_node::new(lexer::Token::new(lexer::TokenType::ROOT, String::from("")));
+            let current_node = &mut root;
+            
+            let mut current_token = self.lexer.get_token();
             while current_token.token_type != lexer::TokenType::EOF {
 
             }
