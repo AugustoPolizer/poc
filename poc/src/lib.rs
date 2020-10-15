@@ -11,7 +11,8 @@ mod lexer {
         NAME,
         KEYWORD,
         TYPE,
-        NUMBER,
+        INTEGER,
+        FLOAT,
         STRING,
         ATTR,
         OP,
@@ -151,7 +152,10 @@ mod lexer {
                             }
                         }
                     }
-                    Token::new(TokenType::NUMBER, buffer) 
+                    if float {
+                        return Token::new(TokenType::FLOAT, buffer) 
+                    }
+                    Token::new(TokenType::INTEGER, buffer) 
                 }
                 '&' => {
                     parsing_tokens_ll2('&', TokenType::OP, TokenType::OP)
@@ -245,7 +249,7 @@ mod lexer {
             assert_token_equal(&mut lexer, "int", TokenType::TYPE);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
-            assert_token_equal(&mut lexer, "1", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "1", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
@@ -273,14 +277,14 @@ mod lexer {
             assert_token_equal(&mut lexer, ":", TokenType::COLON);
             assert_token_equal(&mut lexer, "int", TokenType::TYPE);
             assert_token_equal(&mut lexer, "=", TokenType::ATTR);
-            assert_token_equal(&mut lexer, "1", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "1", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "const", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "b", TokenType::NAME);
             assert_token_equal(&mut lexer, ":", TokenType::COLON);
             assert_token_equal(&mut lexer, "float", TokenType::TYPE);
             assert_token_equal(&mut lexer, "=", TokenType::ATTR);
-            assert_token_equal(&mut lexer, "3.14", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "3.14", TokenType::FLOAT);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "let", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "c", TokenType::NAME);
@@ -314,17 +318,17 @@ mod lexer {
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
-            assert_token_equal(&mut lexer, "500.01", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "500.01", TokenType::FLOAT);
             assert_token_equal(&mut lexer, "+", TokenType::OP);
-            assert_token_equal(&mut lexer, "3", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "3", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESE);
             assert_token_equal(&mut lexer, "*", TokenType::OP);
-            assert_token_equal(&mut lexer, "2.015", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "2.015", TokenType::FLOAT);
             assert_token_equal(&mut lexer, "+", TokenType::OP);
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
-            assert_token_equal(&mut lexer, "1", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "1", TokenType::INTEGER);
             assert_token_equal(&mut lexer, "/", TokenType::OP);
-            assert_token_equal(&mut lexer, "3", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "3", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESE);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
@@ -385,15 +389,15 @@ mod lexer {
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
             assert_token_equal(&mut lexer, "x", TokenType::NAME);
             assert_token_equal(&mut lexer, "<=", TokenType::OP);
-            assert_token_equal(&mut lexer, "10", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "10", TokenType::INTEGER);
             assert_token_equal(&mut lexer, "&&", TokenType::OP);
             assert_token_equal(&mut lexer, "x", TokenType::NAME);
             assert_token_equal(&mut lexer, ">=", TokenType::OP);
-            assert_token_equal(&mut lexer, "0", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "0", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESE);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
-            assert_token_equal(&mut lexer, "10", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "10", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "else", TokenType::KEYWORD);
@@ -401,17 +405,17 @@ mod lexer {
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
             assert_token_equal(&mut lexer, "x", TokenType::NAME);
             assert_token_equal(&mut lexer, "<=", TokenType::OP);
-            assert_token_equal(&mut lexer, "100", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "100", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESE);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
-            assert_token_equal(&mut lexer, "100", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "100", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "else", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
-            assert_token_equal(&mut lexer, "1000", TokenType::NUMBER);
+            assert_token_equal(&mut lexer, "1000", TokenType::INTEGER);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
@@ -420,25 +424,51 @@ mod lexer {
     }
 }
 
-mod parser {
+mod ast {
 
     use super::lexer;
-
-    struct Ast_node {
-        token: lexer::Token,
-        left: Option<Box<Ast_node>>,
-        right: Option<Box<Ast_node>>
+    
+    // Root definition
+    struct Ast {
+       root: Option<Box<dyn AstNode>> 
     }
 
-    impl Ast_node {
-        pub fn new(token: lexer::Token) -> Ast_node {
-            Ast_node {
+    // Generic nodes 
+    trait AstNode {}
+
+    // FuncDecl Node
+    pub struct FuncDeclAst {
+        token: lexer::Token,
+        left: Option<Box<dyn AstNode>>,
+        right: Option<Box<dyn AstNode>>
+    }
+
+    impl AstNode for FuncDeclAst {}
+
+    impl FuncDeclAst {
+        pub fn new(token: lexer::Token) -> FuncDeclAst {
+            FuncDeclAst {
                 token,
                 left: None,
                 right: None
             }
         }
     }
+    
+    // Expression nodes
+    trait ExprNode {}
+    
+    pub struct IntNode {
+
+    }
+
+}
+
+
+
+mod parser {
+
+    use super::{lexer, ast};
     
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
@@ -451,13 +481,14 @@ mod parser {
            }  
         }
 
-        pub fn parse(&mut self) -> Ast_node {
-            let mut root = Ast_node::new(lexer::Token::new(lexer::TokenType::ROOT, String::from("")));
+        pub fn parse(&mut self) -> ast::AstGenericNode {
+            let mut root = ast::AstGenericNode::new(lexer::Token::new(lexer::TokenType::ROOT, String::from("")));
             let current_node = &mut root;
             
             let mut current_token = self.lexer.get_token();
             while current_token.token_type != lexer::TokenType::EOF {
 
+                current_token = self.lexer.get_token();
             }
             root
         }
