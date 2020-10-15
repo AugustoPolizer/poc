@@ -7,7 +7,7 @@ mod lexer {
     }
 
     #[derive(PartialEq, Debug)]
-    enum TokenType {
+    pub enum TokenType {
         NAME,
         KEYWORD,
         TYPE,
@@ -30,13 +30,13 @@ mod lexer {
     }
 
 
-    struct Token {
-        token_type: TokenType,
-        text: String,
+    pub struct Token {
+        pub token_type: TokenType,
+        pub text: String,
     }
 
     impl Token {
-        fn new(token_type: TokenType, text: String) -> Token {
+        pub fn new(token_type: TokenType, text: String) -> Token {
             Token { token_type, text }
         }
     }
@@ -419,24 +419,46 @@ mod lexer {
     }
 }
 
-mod abstract_syntax_tree {
-
-    struct Ast_node {
-    }
-}
-
-
 mod parser {
 
+    use super::lexer;
+
+    struct Ast_node {
+        token: lexer::Token,
+        left: Option<Box<Ast_node>>,
+        right: Option<Box<Ast_node>>
+    }
+
+    impl Ast_node {
+        pub fn new(token: lexer::Token) -> Ast_node {
+            Ast_node {
+                token,
+                left: None,
+                right: None
+            }
+        }
+    }
+    
     struct Parser<'a>{
-        lexer: crate::lexer::Lexer<'a>
+        lexer: lexer::Lexer<'a>
     }
 
     impl<'a> Parser<'a> {
         pub fn new(code: &str) -> Parser {
            Parser {
-               lexer: crate::lexer::Lexer::new(code)
+               lexer: lexer::Lexer::new(code)
            }  
+        }
+
+        pub fn parse(&mut self) -> Ast_node {
+            let mut root;
+            let mut current_node;
+            let current_token = self.lexer.get_token();
+
+            while current_token.token_type != lexer::TokenType::EOF {
+
+            }
+            root
         }
     }
 
