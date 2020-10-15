@@ -481,16 +481,12 @@ mod parser {
            }  
         }
 
-        pub fn parse(&mut self) -> ast::AstGenericNode {
-            let mut root = ast::AstGenericNode::new(lexer::Token::new(lexer::TokenType::ROOT, String::from("")));
-            let current_node = &mut root;
-            
+        pub fn parse(&mut self) {
             let mut current_token = self.lexer.get_token();
             while current_token.token_type != lexer::TokenType::EOF {
 
                 current_token = self.lexer.get_token();
             }
-            root
         }
     }
 
