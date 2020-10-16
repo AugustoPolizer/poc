@@ -430,41 +430,85 @@ mod ast {
     
     // Root definition
     struct Ast {
-       root: Option<Box<dyn AstNode>> 
+       root: Option<Box<dyn AstNodes>> 
     }
 
     // Generic nodes 
-    trait AstNode {}
+    trait AstNodes {}
 
-    // FuncDecl Node
-    pub struct FuncDeclAst {
+    pub struct FuncDecl {
         token: lexer::Token,
-        left: Option<Box<dyn AstNode>>,
-        right: Option<Box<dyn AstNode>>
-    }
-
-    impl AstNode for FuncDeclAst {}
-
-    impl FuncDeclAst {
-        pub fn new(token: lexer::Token) -> FuncDeclAst {
-            FuncDeclAst {
-                token,
-                left: None,
-                right: None
-            }
-        }
+        function_body: Option<Box<dyn AstNodes>>,
     }
     
+    impl AstNodes for FuncDecl {}
+
+    pub struct ConditionalNode {
+        token: lexer::Token,
+        conditional_expression: Box<dyn ExprNodes>,
+        conditional_body: Box<dyn AstNodes>
+    }
+
+    impl AstNodes for ConditionalNode {}
+
+    pub struct AttributionNode {
+        token: lexer::Token,
+        var: Box<VarNode>, 
+        expression: Box<dyn ExprNodes>
+    }
+    
+    impl AstNodes for AttributionNode {}
+
+    pub struct VarDecl {
+        token: lexer::Token,
+    }
+
     // Expression nodes
-    trait ExprNode {}
-    
-    pub struct IntNode {
+    trait ExprNodes {}
 
+    pub struct ExprNode {
+
+        token: lexer::Token,
+        left_operand: Option<Box<dyn ExprNodes>>,
+        right_operand: Option<Box<dyn ExprNodes>>
     }
+
+    impl ExprNodes for ExprNode {}
+
+    // Leaf nodes
+    pub struct IntNode {
+        token: lexer::Token
+    }
+    
+    impl ExprNodes for IntNode {}
+
+    pub struct FloatNode {
+        token: lexer::Token
+    }
+    
+    impl ExprNodes for FloatNode {}
+
+
+    pub struct StringNode {
+        token: lexer::Token
+    }
+
+    impl ExprNodes for StringNode {}
+
+    pub struct VarNode {
+        token: lexer::Token
+    }
+    
+    impl ExprNodes for VarNode {}
+
+    pub struct FuncCall {
+        token: lexer::Token,
+        params: Vec<String>,
+    }
+    
+    impl ExprNodes for FuncCall {}
 
 }
-
-
 
 mod parser {
 
