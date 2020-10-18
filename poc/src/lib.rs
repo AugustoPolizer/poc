@@ -125,7 +125,7 @@ mod lexer {
                             Some(c) => *c,
                             None => break,
                         };
-                        if !lookahead.is_ascii_alphabetic() && !(lookahead == '_') {
+                        if !lookahead.is_ascii_alphanumeric() && !(lookahead == '_') {
                             break;
                         }
                     }
@@ -698,6 +698,121 @@ mod scope_manager{
             }
         } 
 
+        #[test]
+        fn find_symbol_with_only_one_scope() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+            let symbol = match scope_manager.find_symbol("var_test") {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(symbol.symbol_type, Type::INTEGER); 
+        } 
+
+        #[test]
+        fn find_symbol_with_two_scopes() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test1")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+ 
+            scope_manager.create_new_scope();
+            match scope_manager.insert_symbol(Symbol::new(Type::FLOAT), String::from("var_test2")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+            
+            let mut symbol = match scope_manager.find_symbol("var_test2") {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(symbol.symbol_type, Type::FLOAT); 
+            
+            scope_manager.remove_scope();
+            match scope_manager.find_symbol("var_test2") {
+                Some(_) => assert!(false),
+                None => assert!(true)
+            };
+
+            symbol = match scope_manager.find_symbol("var_test1") {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(symbol.symbol_type, Type::INTEGER); 
+
+            scope_manager.remove_scope();
+            match scope_manager.find_symbol("var_test1") {
+                Some(_) => assert!(false),
+                None => assert!(true)
+            };
+
+        } 
+        
+        #[test]
+        fn find_func_decl_with_only_one_scope() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_func_decl(FuncDecl::new(Type::INTEGER, Vec::new()), String::from("test_function")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+            let func_decl = match scope_manager.find_func_decl("test_function") {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(func_decl.return_type, Type::INTEGER); 
+        } 
+
+        #[test]
+        fn find_func_decl_with_two_scope() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_func_decl(FuncDecl::new(Type::INTEGER, Vec::new()), String::from("test_function1")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+ 
+            scope_manager.create_new_scope();
+            match scope_manager.insert_func_decl(FuncDecl::new(Type::FLOAT, Vec::new()), String::from("test_function2")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+            
+            let mut func_decl = match scope_manager.find_func_decl("test_function2") {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(func_decl.return_type, Type::FLOAT); 
+            
+            scope_manager.remove_scope();
+            match scope_manager.find_func_decl("test_function2") {
+                Some(_) => assert!(false),
+                None => assert!(true)
+            };
+
+            func_decl = match scope_manager.find_func_decl("test_function1") {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(func_decl.return_type, Type::INTEGER); 
+
+            scope_manager.remove_scope();
+            match scope_manager.find_func_decl("test_function1") {
+                Some(_) => assert!(false),
+                None => assert!(true)
+            };
+
+        } 
     }
 }
 
