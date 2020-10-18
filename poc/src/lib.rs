@@ -628,7 +628,7 @@ mod scope_manager{
             None
         }
         
-        pub fn find_func_decl(&mut self, name: &str) -> Option<& FuncDecl> {
+        pub fn find_func_decl(&mut self, name: &str) -> Option<&FuncDecl> {
             let iter = self.scopes.iter().rev();
             for scope in iter {
                 match scope.function_table.get(name) {
@@ -655,6 +655,21 @@ mod scope_manager{
             };
         }
 
+        #[test]
+        fn remove_scope() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.remove_scope() {
+                Some(_) => {
+                    match scope_manager.remove_scope() {
+                        Some(_) => assert!(false),
+                        None => assert!(true)
+                    }
+                },
+                None => assert!(false)
+            };
+        }
 
         #[test]
         fn insert_symbol_correct_use() {
