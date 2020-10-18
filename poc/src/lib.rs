@@ -523,17 +523,11 @@ mod lexer {
     }
 }
 
-mod parser {
 
-    use super::lexer;
+mod scope_manager{
+    
     use std::collections;
-   
-    struct AstNode {
-        token: lexer::Token,
-        left: Option<Box<AstNode>>,
-        right: Option<Box<AstNode>>
-    }
-   
+    
     #[derive(PartialEq, Debug, Clone)]
     pub enum Type {
         INTEGER,
@@ -546,24 +540,103 @@ mod parser {
         symbol_type: Type
     }
 
-    struct FuncDef {
+    struct FuncDecl {
         name: String,
         return_type: Type,
         parms: Vec<Symbol>
     }
 
+    struct Scope {
+        symbol_table: collections::HashMap<String, Symbol>,
+        function_table: collections::HashMap<String, FuncDecl>,
+    }
+
+    impl Scope {
+        fn new() -> Scope {
+            Scope {
+                symbol_table: collections::HashMap::new(),
+                function_table: collections::HashMap::new(),
+            }
+        }
+    }
+    
+    struct ScopeManager {
+        scopes: Vec<Scope>
+    }
+
+    impl ScopeManager {
+        pub fn new() -> ScopeManager {
+            ScopeManager {
+                scopes: Vec::new(),
+            }
+        }
+
+        pub fn create_new_scope(&mut self) {
+           self.scopes.push(Scope::new()); 
+        }
+
+        pub fn remove_scope(&mut self) -> Option<Scope> {
+            match self.scopes.pop() {
+                Some(s) => Some(s),
+                None => None
+            }
+        }
+
+        pub fn find_symbol(&mut self, name: &str) -> Option<&Symbol> {
+            let iter = self.scopes.iter().rev();
+            for scope in iter {
+                match scope.symbol_table.get(name) {
+                    Some(s) => return Some(s),
+                    None => () 
+                };
+            }
+            None
+        }
+        
+        pub fn find_func_decl(&mut self, name: &str) -> Option<& FuncDecl> {
+            let iter = self.scopes.iter().rev();
+            for scope in iter {
+                match scope.function_table.get(name) {
+                    Some(f) => return Some(f),
+                    None => () 
+                };
+            }
+            None
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn template() {
+            assert_eq!(1 + 1, 2);
+        }
+    }
+}
+
+mod parser {
+
+    use super::lexer;
+    use std::collections;
+   
+    struct AstNode {
+        token: lexer::Token,
+        left: Option<Box<AstNode>>,
+        right: Option<Box<AstNode>>
+    }
+   
+
+
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
-        symbol_table: collections::HashMap<String, Symbol>,
-        function_table: collections::HashMap<String, FuncDef>,
     }
 
     impl<'a> Parser<'a> {
         pub fn new(code: &str) -> Parser {
            Parser {
                lexer: lexer::Lexer::new(code),
-               symbol_table: collections::HashMap::new(),
-               function_table: collections::HashMap::new()
            }  
         }
 
