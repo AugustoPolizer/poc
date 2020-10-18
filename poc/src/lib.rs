@@ -7,7 +7,7 @@ mod lexer {
         peeked_tokens: std::collections::VecDeque<Token>
     }
 
-    #[derive(PartialEq, Debug)]
+    #[derive(PartialEq, Debug, Clone)]
     pub enum TokenType {
         NAME,
         KEYWORD,
@@ -32,7 +32,7 @@ mod lexer {
         UNKNOWN
     }
 
-
+    #[derive(Clone)]
     pub struct Token {
         pub token_type: TokenType,
         pub text: String,
@@ -70,7 +70,7 @@ mod lexer {
 
         pub fn peek_token(&mut self) -> Token {
             let token = self.get_token();
-            self.peeked_tokens.push_back(token);
+            self.peeked_tokens.push_back(token.clone());
 
             token
         }
@@ -438,6 +438,79 @@ mod lexer {
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
         }
+
+        fn assert_token_equal_peek(lexer: &mut Lexer, text: &str, token_type: TokenType){
+            let token = lexer.peek_token();
+            assert_eq!(token.text, text);
+            assert_eq!(token.token_type, token_type);
+        }
+
+        #[test]
+        fn peek() {
+            let code = r"
+                let a: int = 10; 
+                ";
+            let mut lexer: Lexer = Lexer::new(&code);
+            
+            assert_token_equal_peek(&mut lexer, "let", TokenType::KEYWORD);    
+            assert_token_equal_peek(&mut lexer, "a", TokenType::NAME);    
+            assert_token_equal_peek(&mut lexer, ":", TokenType::COLON);    
+            assert_token_equal_peek(&mut lexer, "int", TokenType::TYPE);    
+            assert_token_equal_peek(&mut lexer, "=", TokenType::ATTR);    
+            assert_token_equal_peek(&mut lexer, "10", TokenType::INTEGER);    
+            assert_token_equal_peek(&mut lexer, ";", TokenType::SEMICOLON);    
+            assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
+            assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
+        }
+        
+        fn assert_token_equal_consume(lexer: &mut Lexer, text: &str, token_type: TokenType){
+            let token = lexer.consume_token();
+            assert_eq!(token.text, text);
+            assert_eq!(token.token_type, token_type);
+        }
+
+        #[test]
+        fn consume() {
+            let code = r"
+                let a: int = 10; 
+                ";
+            let mut lexer: Lexer = Lexer::new(&code);
+            
+            assert_token_equal_consume(&mut lexer, "let", TokenType::KEYWORD);    
+            assert_token_equal_consume(&mut lexer, "a", TokenType::NAME);    
+            assert_token_equal_consume(&mut lexer, ":", TokenType::COLON);    
+            assert_token_equal_consume(&mut lexer, "int", TokenType::TYPE);    
+            assert_token_equal_consume(&mut lexer, "=", TokenType::ATTR);    
+            assert_token_equal_consume(&mut lexer, "10", TokenType::INTEGER);    
+            assert_token_equal_consume(&mut lexer, ";", TokenType::SEMICOLON);    
+            assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
+            assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
+        }
+        
+        #[test]
+        fn consume_and_peek() {
+            let code = r"
+                let a: int = 10; 
+                ";
+            let mut lexer: Lexer = Lexer::new(&code);
+            
+            assert_token_equal_consume(&mut lexer, "let", TokenType::KEYWORD);    
+            assert_token_equal_peek(&mut lexer, "a", TokenType::NAME);    
+            assert_token_equal_peek(&mut lexer, ":", TokenType::COLON);    
+            assert_token_equal_consume(&mut lexer, "a", TokenType::NAME);    
+            assert_token_equal_consume(&mut lexer, ":", TokenType::COLON);    
+            assert_token_equal_consume(&mut lexer, "int", TokenType::TYPE);     
+            assert_token_equal_peek(&mut lexer, "=", TokenType::ATTR);    
+            assert_token_equal_peek(&mut lexer, "10", TokenType::INTEGER);    
+            assert_token_equal_peek(&mut lexer, ";", TokenType::SEMICOLON);    
+            assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
+            assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);     
+            assert_token_equal_consume(&mut lexer, "=", TokenType::ATTR);    
+            assert_token_equal_consume(&mut lexer, "10", TokenType::INTEGER);    
+            assert_token_equal_consume(&mut lexer, ";", TokenType::SEMICOLON);    
+            assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
+            assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
+        }
     }
 }
 
@@ -463,12 +536,11 @@ mod parser {
         }
 
         pub fn build_ast(&mut self) -> AstNode {
-            let mut root = AstNode {
+            let root = AstNode {
                 token: lexer::Token::new(lexer::TokenType::ROOT, String::from("ROOT")),
                 left: None,
                 right: None
             }; 
-            self.parse(&mut root, first_token); 
             root
         }
 
