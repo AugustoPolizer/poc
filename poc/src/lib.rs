@@ -539,10 +539,26 @@ mod scope_manager{
         symbol_type: Type
     }
 
+    impl Symbol {
+        fn new(symbol_type: Type) -> Symbol {
+            Symbol{
+                symbol_type
+            }
+        }
+    }
+
     struct FuncDecl {
-        name: String,
         return_type: Type,
-        parms: Vec<Symbol>
+        params: Vec<Symbol>
+    }
+
+    impl FuncDecl {
+        fn new(return_type: Type, params: Vec<Symbol>) -> FuncDecl {
+            FuncDecl {
+                return_type,
+                params
+            }
+        }
     }
 
     struct Scope {
@@ -585,7 +601,7 @@ mod scope_manager{
            if self.scopes.is_empty() {
                return Err("There is no scope to insert symbol");
            }
-           let idx = self.scopes.len();
+           let idx = self.scopes.len() - 1;
            self.scopes[idx].symbol_table.insert(symbol_name, symbol);
 
            Ok(())
@@ -595,7 +611,7 @@ mod scope_manager{
            if self.scopes.is_empty() {
                return Err("There is no scope to insert symbol");
            }
-           let idx = self.scopes.len();
+           let idx = self.scopes.len() - 1;
            self.scopes[idx].function_table.insert(func_name, func_decl);
 
            Ok(())
@@ -627,6 +643,60 @@ mod scope_manager{
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn create_scope() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.remove_scope() {
+                Some(_) => assert!(true),
+                None => assert!(false)
+            };
+        }
+
+
+        #[test]
+        fn insert_symbol_correct_use() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+        } 
+
+        #[test]
+        fn insert_symbol_incorrect_use() {
+            let mut scope_manager = ScopeManager::new();
+
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test")) {
+                Ok(_) => assert!(false),
+                Err(_) => assert!(true)
+            }
+        } 
+        
+        #[test]
+        fn insert_func_decl_correct_use() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_func_decl(FuncDecl::new(Type::INTEGER, Vec::new()), String::from("test_function")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+        } 
+
+        #[test]
+        fn insert_func_decl_incorrect_use() {
+            let mut scope_manager = ScopeManager::new();
+
+            match scope_manager.insert_func_decl(FuncDecl::new(Type::INTEGER, Vec::new()), String::from("test_function")) {
+                Ok(_) => assert!(false),
+                Err(_) => assert!(true)
+            }
+        } 
 
     }
 }
