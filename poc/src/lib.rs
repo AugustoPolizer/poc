@@ -27,6 +27,7 @@ mod lexer {
         RBRACE,
         SEMICOLON,
         COLON,
+        COMMA,
         EOF,
         ROOT,
         UNKNOWN
@@ -199,6 +200,10 @@ mod lexer {
                 ';' => {
                     self.code_iterator.next();
                     Token::new(TokenType::SEMICOLON, String::from(";")) 
+                }
+                ',' => {
+                    self.code_iterator.next();
+                    Token::new(TokenType::COMMA, String::from(",")) 
                 }
                 ':' => {
                     self.code_iterator.next();
@@ -380,13 +385,13 @@ mod lexer {
         #[test]
         fn get_token_if_else() {
             let code = r"
-                function operators(x: int) -> float {
+                function operators(x: int, limit: int) -> float {
                     if (x <= 10 && x >= 0) {
                         return 10;
                     } else if (x <= 100) {
                         return 100;
                     } else {
-                        return 1000; 
+                        return limit; 
                     }
                 }
                 ";
@@ -396,6 +401,10 @@ mod lexer {
             assert_token_equal(&mut lexer, "operators", TokenType::NAME);
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
             assert_token_equal(&mut lexer, "x", TokenType::NAME);
+            assert_token_equal(&mut lexer, ":", TokenType::COLON);
+            assert_token_equal(&mut lexer, "int", TokenType::TYPE);
+            assert_token_equal(&mut lexer, ",", TokenType::COMMA);
+            assert_token_equal(&mut lexer, "limit", TokenType::NAME);
             assert_token_equal(&mut lexer, ":", TokenType::COLON);
             assert_token_equal(&mut lexer, "int", TokenType::TYPE);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESE);
@@ -432,7 +441,7 @@ mod lexer {
             assert_token_equal(&mut lexer, "else", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "return", TokenType::KEYWORD);
-            assert_token_equal(&mut lexer, "1000", TokenType::INTEGER);
+            assert_token_equal(&mut lexer, "limit", TokenType::NAME);
             assert_token_equal(&mut lexer, ";", TokenType::SEMICOLON);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
             assert_token_equal(&mut lexer, "}", TokenType::RBRACE);
@@ -517,35 +526,97 @@ mod lexer {
 mod parser {
 
     use super::lexer;
+    use std::collections;
    
     struct AstNode {
         token: lexer::Token,
         left: Option<Box<AstNode>>,
         right: Option<Box<AstNode>>
     }
-    
+   
+    #[derive(PartialEq, Debug, Clone)]
+    pub enum Type {
+        INTEGER,
+        FLOAT,
+        STRING
+    }
+
+    struct Symbol {
+        name: String,
+        symbol_type: Type
+    }
+
+    struct FuncDef {
+        name: String,
+        return_type: Type,
+        parms: Vec<Symbol>
+    }
+
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
+        symbol_table: collections::HashMap<String, Symbol>,
+        function_table: collections::HashMap<String, FuncDef>,
     }
 
     impl<'a> Parser<'a> {
         pub fn new(code: &str) -> Parser {
            Parser {
                lexer: lexer::Lexer::new(code),
+               symbol_table: collections::HashMap::new(),
+               function_table: collections::HashMap::new()
            }  
         }
 
         pub fn build_ast(&mut self) -> AstNode {
-            let root = AstNode {
+            let mut root = AstNode {
                 token: lexer::Token::new(lexer::TokenType::ROOT, String::from("ROOT")),
                 left: None,
                 right: None
             }; 
+            self.parse(&mut root);
             root
         }
 
-        fn parse(&mut self, current_node: &mut AstNode, current: lexer::Token) {
+        fn parse(&mut self, root: &mut AstNode) -> Result<(), String> {
+           
+            let mut current_node = root;
+            let lookahead = self.lexer.peek_token();  
+            match lookahead.token_type {
+                lexer::TokenType::KEYWORD => {
+                    match lookahead.text.as_str() {
+                        "function" => {
+                            let mut lookahead = self.lexer.peek_token();
+                            if lookahead.token_type != lexer::TokenType::NAME {
+                                return Err(format!("Expected a function name, found \"{}\"", lookahead.text));
+                            } 
+                            let function_name = lookahead.text;
 
+                            lookahead = self.lexer.peek_token();
+                            if lookahead.token_type != lexer::TokenType::LPARENTHESE {
+                                return Err(format!("Expected a \"(\", found \"{}\"", lookahead.text));
+                            }
+
+                            lookahead = self.lexer.peek_token();
+                            while lookahead.token_type != lexer::TokenType::RPARENTHESE {
+                                if lookahead.token_type != lexer::TokenType::NAME {
+                                    return Err(format!("Expected a function param name, found \"{}\"", lookahead.text));
+                                }    
+                                lookahead = self.lexer.peek_token();
+                                if lookahead.token_type != lexer::TokenType::NAME {
+                                    return Err(format!("Expected a function param name, found \"{}\"", lookahead.text));
+                                }    
+                            } 
+                        }
+                        _ => {
+                            panic!("Crash and Burn. If you see this error, something went very wrong!");
+                        }
+                    }
+                }
+                _ => {
+                    panic!("Crash and Burn. If you see this error, something went very wrong!");
+                }
+            }
+            Ok(())
         }
     }
 
