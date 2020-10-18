@@ -3,7 +3,8 @@ mod lexer {
     pub struct Lexer<'a> {
         code_iterator: std::iter::Peekable<std::str::Chars<'a>>,
         keywords: std::collections::HashSet<&'static str>,
-        types: std::collections::HashSet<&'static str>
+        types: std::collections::HashSet<&'static str>,
+        peeked_tokens: std::collections::VecDeque<Token>
     }
 
     #[derive(PartialEq, Debug)]
@@ -54,11 +55,27 @@ mod lexer {
             Lexer {
                 code_iterator: raw_code.chars().peekable(),
                 keywords: ["function", "return", "if", "else", "let", "const"].iter().cloned().collect(),
-                types: ["int", "float", "void", "string"].iter().cloned().collect()
+                types: ["int", "float", "void", "string"].iter().cloned().collect(),
+                peeked_tokens: std::collections::VecDeque::new()
             }
         }
 
-        pub fn get_token(&mut self) -> Token {
+        pub fn consume_token(&mut self) -> Token {
+            let token = match self.peeked_tokens.pop_front() {
+                Some(t) => t,
+                None => self.get_token()
+            };
+            token
+        }
+
+        pub fn peek_token(&mut self) -> Token {
+            let token = self.get_token();
+            self.peeked_tokens.push_back(token);
+
+            token
+        }
+
+        fn get_token(&mut self) -> Token {
 
             let mut lookahead = match self.code_iterator.peek() {
                 Some(c) => *c,
@@ -424,95 +441,15 @@ mod lexer {
     }
 }
 
-mod ast {
-
-    use super::lexer;
-    
-    // Root definition
-    struct Ast {
-       root: Option<Box<dyn AstNodes>> 
-    }
-
-    // Generic nodes 
-    trait AstNodes {}
-
-    pub struct FuncDecl {
-        token: lexer::Token,
-        function_body: Option<Box<dyn AstNodes>>,
-    }
-    
-    impl AstNodes for FuncDecl {}
-
-    pub struct ConditionalNode {
-        token: lexer::Token,
-        conditional_expression: Box<dyn ExprNodes>,
-        conditional_body: Box<dyn AstNodes>
-    }
-
-    impl AstNodes for ConditionalNode {}
-
-    pub struct AttributionNode {
-        token: lexer::Token,
-        var: Box<VarNode>, 
-        expression: Box<dyn ExprNodes>
-    }
-    
-    impl AstNodes for AttributionNode {}
-
-    pub struct VarDecl {
-        token: lexer::Token,
-    }
-
-    // Expression nodes
-    trait ExprNodes {}
-
-    pub struct ExprNode {
-
-        token: lexer::Token,
-        left_operand: Option<Box<dyn ExprNodes>>,
-        right_operand: Option<Box<dyn ExprNodes>>
-    }
-
-    impl ExprNodes for ExprNode {}
-
-    // Leaf nodes
-    pub struct IntNode {
-        token: lexer::Token
-    }
-    
-    impl ExprNodes for IntNode {}
-
-    pub struct FloatNode {
-        token: lexer::Token
-    }
-    
-    impl ExprNodes for FloatNode {}
-
-
-    pub struct StringNode {
-        token: lexer::Token
-    }
-
-    impl ExprNodes for StringNode {}
-
-    pub struct VarNode {
-        token: lexer::Token
-    }
-    
-    impl ExprNodes for VarNode {}
-
-    pub struct FuncCall {
-        token: lexer::Token,
-        params: Vec<String>,
-    }
-    
-    impl ExprNodes for FuncCall {}
-
-}
-
 mod parser {
 
-    use super::{lexer, ast};
+    use super::lexer;
+   
+    struct AstNode {
+        token: lexer::Token,
+        left: Option<Box<AstNode>>,
+        right: Option<Box<AstNode>>
+    }
     
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
@@ -525,12 +462,18 @@ mod parser {
            }  
         }
 
-        pub fn parse(&mut self) {
-            let mut current_token = self.lexer.get_token();
-            while current_token.token_type != lexer::TokenType::EOF {
+        pub fn build_ast(&mut self) -> AstNode {
+            let mut root = AstNode {
+                token: lexer::Token::new(lexer::TokenType::ROOT, String::from("ROOT")),
+                left: None,
+                right: None
+            }; 
+            self.parse(&mut root, first_token); 
+            root
+        }
 
-                current_token = self.lexer.get_token();
-            }
+        fn parse(&mut self, current_node: &mut AstNode, current: lexer::Token) {
+
         }
     }
 
