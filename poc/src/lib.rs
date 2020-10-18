@@ -536,7 +536,6 @@ mod scope_manager{
     }
 
     struct Symbol {
-        name: String,
         symbol_type: Type
     }
 
@@ -582,6 +581,26 @@ mod scope_manager{
             }
         }
 
+        pub fn insert_symbol(& mut self, symbol: Symbol, symbol_name: String) -> Result<(), &'static str> {
+           if self.scopes.is_empty() {
+               return Err("There is no scope to insert symbol");
+           }
+           let idx = self.scopes.len();
+           self.scopes[idx].symbol_table.insert(symbol_name, symbol);
+
+           Ok(())
+        }
+
+        pub fn insert_func_decl(& mut self, func_decl: FuncDecl, func_name: String) -> Result<(), &'static str> {
+           if self.scopes.is_empty() {
+               return Err("There is no scope to insert symbol");
+           }
+           let idx = self.scopes.len();
+           self.scopes[idx].function_table.insert(func_name, func_decl);
+
+           Ok(())
+        }
+
         pub fn find_symbol(&mut self, name: &str) -> Option<&Symbol> {
             let iter = self.scopes.iter().rev();
             for scope in iter {
@@ -609,10 +628,6 @@ mod scope_manager{
     mod tests {
         use super::*;
 
-        #[test]
-        fn template() {
-            assert_eq!(1 + 1, 2);
-        }
     }
 }
 
