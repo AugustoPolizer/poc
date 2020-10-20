@@ -29,7 +29,6 @@ mod lexer {
         COLON,
         COMMA,
         EOF,
-        ROOT,
         UNKNOWN
     }
 
@@ -97,8 +96,7 @@ mod lexer {
                     };
                 }
             }
-
-            // Faz o parsing de tokens que precisando de um lookahead igual a 2
+            // Parsing tokens that need a lookahead equal to 2
             let mut parsing_tokens_ll2 = | second_possible_char: char, first_token_type: TokenType, second_token_type: TokenType| -> Token {
                 let mut buffer = String::new();
                 buffer.push(lookahead);
@@ -535,25 +533,25 @@ mod scope_manager{
         STRING
     }
 
-    struct Symbol {
+    pub struct Symbol {
         symbol_type: Type
     }
 
     impl Symbol {
-        fn new(symbol_type: Type) -> Symbol {
+        pub fn new(symbol_type: Type) -> Symbol {
             Symbol{
                 symbol_type
             }
         }
     }
 
-    struct FuncDecl {
+    pub struct FuncDecl {
         return_type: Type,
         params: Vec<Symbol>
     }
 
     impl FuncDecl {
-        fn new(return_type: Type, params: Vec<Symbol>) -> FuncDecl {
+        pub fn new(return_type: Type, params: Vec<Symbol>) -> FuncDecl {
             FuncDecl {
                 return_type,
                 params
@@ -575,7 +573,7 @@ mod scope_manager{
         }
     }
     
-    struct ScopeManager {
+    pub struct ScopeManager {
         scopes: Vec<Scope>
     }
 
@@ -788,7 +786,7 @@ mod scope_manager{
         } 
 
         #[test]
-        fn find_func_decl_with_two_scope() {
+        fn find_func_decl_with_two_scopes() {
             let mut scope_manager = ScopeManager::new();
 
             scope_manager.create_new_scope();
@@ -833,33 +831,58 @@ mod scope_manager{
 
 mod parser {
 
-    use super::lexer;
-    use std::collections;
+    use super::{lexer, scope_manager};
    
+    
+    #[derive(PartialEq, Clone)]
+    pub enum ParsingTokenType {
+        ATTR,
+        EXPR,
+        ROOT,
+        FUNCDECL,
+        VARDECL
+    }
+
+    #[derive(Clone)]
+    pub struct ParsingToken {
+        pub token_type: ParsingTokenType,
+        pub text: String,
+    }
+
+    impl ParsingToken {
+        pub fn new(token_type: ParsingTokenType, text: String) -> ParsingToken {
+            ParsingToken { token_type, text }
+        }
+    }
+
+    impl std::cmp::PartialEq for ParsingToken {
+        fn eq(&self, other: &Self) -> bool {
+            self.text == other.text && self.token_type == other.token_type
+        }
+    }
+
     struct AstNode {
-        token: lexer::Token,
-        left: Option<Box<AstNode>>,
-        right: Option<Box<AstNode>>
+        token: ParsingToken,
+        childrens: Vec<AstNode>
     }
    
-
-
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
+        scopes: scope_manager::ScopeManager
     }
 
     impl<'a> Parser<'a> {
         pub fn new(code: &str) -> Parser {
            Parser {
                lexer: lexer::Lexer::new(code),
+               scopes: scope_manager::ScopeManager::new()
            }  
         }
 
         pub fn build_ast(&mut self) -> AstNode {
             let mut root = AstNode {
-                token: lexer::Token::new(lexer::TokenType::ROOT, String::from("ROOT")),
-                left: None,
-                right: None
+                token: ParsingToken::new(ParsingTokenType::ROOT, String::from("ROOT")),
+                childrens: Vec::new(),
             }; 
             self.parse(&mut root);
             root
@@ -885,16 +908,32 @@ mod parser {
                             }
 
                             lookahead = self.lexer.peek_token();
-                            while lookahead.token_type != lexer::TokenType::RPARENTHESE {
+                            loop {
                                 if lookahead.token_type != lexer::TokenType::NAME {
                                     return Err(format!("Expected a function param name, found \"{}\"", lookahead.text));
                                 }    
                                 lookahead = self.lexer.peek_token();
-                                if lookahead.token_type != lexer::TokenType::NAME {
-                                    return Err(format!("Expected a function param name, found \"{}\"", lookahead.text));
+                                
+                                if lookahead.token_type != lexer::TokenType::COLON {
+                                    return Err(format!("Expected a function \":\", found \"{}\"", lookahead.text));
                                 }    
+                                
+                                lookahead = self.lexer.peek_token();
+                                
+                                if lookahead.token_type != lexer::TokenType::TYPE {
+                                    return Err(format!("Expected a type\"\", found \"{}\"", lookahead.text));
+                                }    
+
+                                match lookahead.token_type {
+                                    lexer::TokenType::RPARENTHESE => break,
+                                    lexer::TokenType::COMMA => (),
+                                    _ => return Err(format!("Expected a \",\" or a \")\", found \"{}\"", lookahead.text))
+                                };
                             } 
                         }
+                        "let" => {
+                        }
+
                         _ => {
                             panic!("Crash and Burn. If you see this error, something went very wrong!");
                         }
