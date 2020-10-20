@@ -534,13 +534,15 @@ mod scope_manager{
     }
 
     pub struct Symbol {
-        symbol_type: Type
+        symbol_type: Type,
+        is_const: bool
     }
 
     impl Symbol {
-        pub fn new(symbol_type: Type) -> Symbol {
+        pub fn new(symbol_type: Type, is_const: bool) -> Symbol {
             Symbol{
-                symbol_type
+                symbol_type,
+                is_const
             }
         }
     }
@@ -674,7 +676,7 @@ mod scope_manager{
             let mut scope_manager = ScopeManager::new();
 
             scope_manager.create_new_scope();
-            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test")) {
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, false), String::from("var_test")) {
                 Ok(_) => assert!(true),
                 Err(_) => assert!(false)
             }
@@ -684,7 +686,7 @@ mod scope_manager{
         fn insert_symbol_incorrect_use() {
             let mut scope_manager = ScopeManager::new();
 
-            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test")) {
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, false), String::from("var_test")) {
                 Ok(_) => assert!(false),
                 Err(_) => assert!(true)
             }
@@ -716,7 +718,7 @@ mod scope_manager{
             let mut scope_manager = ScopeManager::new();
 
             scope_manager.create_new_scope();
-            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test")) {
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, true), String::from("var_test")) {
                 Ok(_) => assert!(true),
                 Err(_) => assert!(false)
             }
@@ -725,6 +727,7 @@ mod scope_manager{
                 None => return assert!(false)
             };
             assert_eq!(symbol.symbol_type, Type::INTEGER); 
+            assert_eq!(symbol.is_const, true); 
         } 
 
         #[test]
@@ -732,13 +735,13 @@ mod scope_manager{
             let mut scope_manager = ScopeManager::new();
 
             scope_manager.create_new_scope();
-            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER), String::from("var_test1")) {
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, true), String::from("var_test1")) {
                 Ok(_) => assert!(true),
                 Err(_) => assert!(false)
             }
  
             scope_manager.create_new_scope();
-            match scope_manager.insert_symbol(Symbol::new(Type::FLOAT), String::from("var_test2")) {
+            match scope_manager.insert_symbol(Symbol::new(Type::FLOAT, false), String::from("var_test2")) {
                 Ok(_) => assert!(true),
                 Err(_) => assert!(false)
             }
@@ -748,6 +751,7 @@ mod scope_manager{
                 None => return assert!(false)
             };
             assert_eq!(symbol.symbol_type, Type::FLOAT); 
+            assert_eq!(symbol.is_const, false); 
             
             scope_manager.remove_scope();
             match scope_manager.find_symbol("var_test2") {
@@ -760,6 +764,7 @@ mod scope_manager{
                 None => return assert!(false)
             };
             assert_eq!(symbol.symbol_type, Type::INTEGER); 
+            assert_eq!(symbol.is_const, true); 
 
             scope_manager.remove_scope();
             match scope_manager.find_symbol("var_test1") {
@@ -835,7 +840,7 @@ mod parser {
    
     
     #[derive(PartialEq, Clone)]
-    pub enum ParsingTokenType {
+    pub enum NodeType {
         ATTR,
         EXPR,
         ROOT,
@@ -844,25 +849,28 @@ mod parser {
     }
 
     #[derive(Clone)]
-    pub struct ParsingToken {
-        pub token_type: ParsingTokenType,
+    pub struct ParsingNode {
+        pub node_type: NodeType,
         pub text: String,
     }
 
-    impl ParsingToken {
-        pub fn new(token_type: ParsingTokenType, text: String) -> ParsingToken {
-            ParsingToken { token_type, text }
+    impl ParsingNode {
+        pub fn new(node_type: NodeType, text: String) -> ParsingNode {
+            ParsingNode { 
+                node_type, 
+                text 
+            }
         }
     }
 
-    impl std::cmp::PartialEq for ParsingToken {
+    impl std::cmp::PartialEq for ParsingNode {
         fn eq(&self, other: &Self) -> bool {
-            self.text == other.text && self.token_type == other.token_type
+            self.text == other.text && self.node_type == other.node_type
         }
     }
 
     struct AstNode {
-        token: ParsingToken,
+        node: ParsingNode,
         childrens: Vec<AstNode>
     }
    
@@ -881,7 +889,7 @@ mod parser {
 
         pub fn build_ast(&mut self) -> AstNode {
             let mut root = AstNode {
-                token: ParsingToken::new(ParsingTokenType::ROOT, String::from("ROOT")),
+                node: ParsingNode::new(NodeType::ROOT, String::from("ROOT")),
                 childrens: Vec::new(),
             }; 
             self.parse(&mut root);
@@ -931,7 +939,8 @@ mod parser {
                                 };
                             } 
                         }
-                        "let" => {
+                        "let" | "const" => {
+
                         }
 
                         _ => {
