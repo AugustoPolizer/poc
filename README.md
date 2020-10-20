@@ -5,6 +5,10 @@ O objetivo deste trabalho de conclusão de curso é criar uma linguagem de domí
 # Keywords
 if, else, return, function, let e const
 
+# Binary Operators
+
++, -, *, /,  &&, ||, <, <=, >, >=
+
 # Grammar
 
 - PROG: (STATEMENT)* 
