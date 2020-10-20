@@ -2,6 +2,9 @@
 
 O objetivo deste trabalho de conclusão de curso é criar uma linguagem de domínio específico, baseada em operações funcionais, para gerar programas eBPF. Além disso, um requisito de projeto é que somente seja possível escrever programas cuja terminação seja garantida. A importância deste trabalho é criar uma linguaguem específica para a tarefa de escrever programas eBPF (extend Berkeley Packet Filter) que seja concisa e que garanta que o programa seja finalizado.
 
+# Keywords
+if, else, return, function, let e const
+
 # Grammar
 
 - PROG: (STATEMENT)* 
