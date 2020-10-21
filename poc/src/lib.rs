@@ -55,7 +55,7 @@ mod lexer {
             Lexer {
                 code_iterator: raw_code.chars().peekable(),
                 keywords: ["function", "return", "if", "else", "let", "const"].iter().cloned().collect(),
-                types: ["int", "float", "void", "string"].iter().cloned().collect(),
+                types: ["int", "float", "string"].iter().cloned().collect(),
                 peeked_tokens: std::collections::VecDeque::new()
             }
         }
@@ -278,7 +278,7 @@ mod lexer {
         #[test]
         fn get_token_attribution() {
             let code = r"
-            function attributionTest() -> void {
+            function attributionTest() {
                 const a : int = 1;
                 const b : float = 3.14;
                 let c : float = a + b;
@@ -289,8 +289,6 @@ mod lexer {
             assert_token_equal(&mut lexer, "attributionTest", TokenType::NAME);
             assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
             assert_token_equal(&mut lexer, ")", TokenType::RPARENTHESE);
-            assert_token_equal(&mut lexer, "->", TokenType::ARROW);
-            assert_token_equal(&mut lexer, "void", TokenType::TYPE);
             assert_token_equal(&mut lexer, "{", TokenType::LBRACE);
             assert_token_equal(&mut lexer, "const", TokenType::KEYWORD);
             assert_token_equal(&mut lexer, "a", TokenType::NAME);
@@ -545,6 +543,15 @@ mod scope_manager{
                 is_const
             }
         }
+
+        pub fn new_by_string(symbol_type: &str, is_const: bool) -> Option<Symbol> {
+            match symbol_type {
+                "int" => Some(Symbol{symbol_type: Type::INTEGER, is_const}),
+                "float" => Some(Symbol{symbol_type: Type::FLOAT, is_const}),
+                "string" => Some(Symbol{symbol_type: Type::STRING, is_const}),
+                _ => None
+            }
+        }
     }
 
     pub struct FuncDecl {
@@ -561,7 +568,7 @@ mod scope_manager{
         }
     }
 
-    struct Scope {
+    pub struct Scope {
         symbol_table: collections::HashMap<String, Symbol>,
         function_table: collections::HashMap<String, FuncDecl>,
     }
@@ -611,10 +618,19 @@ mod scope_manager{
            if self.scopes.is_empty() {
                return Err("There is no scope to insert symbol");
            }
-           let idx = self.scopes.len() - 1;
-           self.scopes[idx].function_table.insert(func_name, func_decl);
+           let last_scope_index = self.scopes.len() - 1;
+           self.scopes[last_scope_index].function_table.insert(func_name, func_decl);
 
            Ok(())
+        }
+
+
+        pub fn find_symbol_in_current_scope(&mut self, name: &str) -> Option<&Symbol> {
+            let last_scope_index = self.scopes.len() - 1;
+            match self.scopes[last_scope_index].symbol_table.get(name) {
+                Some(s) => Some(s),
+                None => None
+            }
         }
 
         pub fn find_symbol(&mut self, name: &str) -> Option<&Symbol> {
@@ -643,6 +659,36 @@ mod scope_manager{
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn create_symbol() {
+            let mut symbol = match Symbol::new_by_string("int", true) {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(symbol.symbol_type, Type::INTEGER);
+            assert_eq!(symbol.is_const, true);
+
+            symbol = match Symbol::new_by_string("float", false) {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(symbol.symbol_type, Type::FLOAT);
+            assert_eq!(symbol.is_const, false);
+            
+
+            symbol = match Symbol::new_by_string("string", false) {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+            assert_eq!(symbol.symbol_type, Type::STRING);
+            assert_eq!(symbol.is_const, false);
+            
+            match Symbol::new_by_string("invalid_type", false) {
+                Some(_) => assert!(false),
+                None => assert!(true)
+            };
+        }
 
         #[test]
         fn create_scope() {
@@ -712,6 +758,37 @@ mod scope_manager{
                 Err(_) => assert!(true)
             }
         } 
+
+        #[test]
+        fn find_symbol_in_current_scope() {
+            let mut scope_manager = ScopeManager::new();
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, true), String::from("var_test1")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+
+            scope_manager.create_new_scope();
+            match scope_manager.insert_symbol(Symbol::new(Type::FLOAT, false), String::from("var_test2")) {
+                Ok(_) => assert!(true),
+                Err(_) => assert!(false)
+            }
+
+            match scope_manager.find_symbol_in_current_scope("var_test1") {
+                Some(_) => assert!(false),
+                None => assert!(true)
+            };
+
+            let symbol = match scope_manager.find_symbol_in_current_scope("var_test2") {
+                Some(x) => x,
+                None => return assert!(false)
+            };
+
+            assert_eq!(symbol.symbol_type, Type::FLOAT);
+            assert_eq!(symbol.is_const, false);
+
+        }
 
         #[test]
         fn find_symbol_with_only_one_scope() {
@@ -837,7 +914,7 @@ mod scope_manager{
 mod error_msgs {
 
     pub mod parser {
-        pub enum ExpectedToken {
+        pub enum ExpectedTokenError {
             FUNCNAME,
             VARNAME,
             PARAMNAME,
@@ -847,15 +924,25 @@ mod error_msgs {
             COMMAORRPARENTHESE,
         }
 
-        pub fn wrong_token_error_msg_handle(error_type: ExpectedToken, wrong_token: &str) -> String {
+        pub enum ScopeError {
+            REDECLVAR,
+        }
+
+        pub fn wrong_token_error_msg_handle(error_type: ExpectedTokenError, wrong_token: &str) -> String {
             match error_type {
-                ExpectedToken::FUNCNAME => format!("Expected a function name, found \"{}\"", wrong_token),
-                ExpectedToken::PARAMNAME => format!("Expected a param name, found \"{}\"", wrong_token),
-                ExpectedToken::VARNAME => format!("Expected a variable name, found \"{}\"", wrong_token),
-                ExpectedToken::TYPE => format!("Expected a type, found \"{}\"", wrong_token),
-                ExpectedToken::COLON => format!("Expected a \":\", found \"{}\"", wrong_token),
-                ExpectedToken::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
-                ExpectedToken::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token)
+                ExpectedTokenError::FUNCNAME => format!("Expected a function name, found \"{}\"", wrong_token),
+                ExpectedTokenError::PARAMNAME => format!("Expected a param name, found \"{}\"", wrong_token),
+                ExpectedTokenError::VARNAME => format!("Expected a variable name, found \"{}\"", wrong_token),
+                ExpectedTokenError::TYPE => format!("Expected a type, found \"{}\"", wrong_token),
+                ExpectedTokenError::COLON => format!("Expected a \":\", found \"{}\"", wrong_token),
+                ExpectedTokenError::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
+                ExpectedTokenError::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token)
+            }
+        }
+
+        pub fn scope_error_msg_handle(error_type: ScopeError, error: &str) -> String {
+            match error_type {
+                ScopeError::REDECLVAR => format!("Variable \"{}\" has already been declared", error),
             }
         }
 
@@ -865,46 +952,51 @@ mod error_msgs {
 
             #[test]
             fn func_name_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedToken::FUNCNAME, "*");
+                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::FUNCNAME, "*");
                 assert_eq!(error_msg, "Expected a function name, found \"*\"")
             }
 
             #[test] 
             fn param_name_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedToken::PARAMNAME, "+");
+                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::PARAMNAME, "+");
                 assert_eq!(error_msg, "Expected a param name, found \"+\"")
             }
             
             #[test] 
             fn var_name_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedToken::VARNAME, ":");
+                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::VARNAME, ":");
                 assert_eq!(error_msg, "Expected a variable name, found \":\"")
             }
             
             #[test]
             fn type_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedToken::TYPE, "let");
+                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::TYPE, "let");
                 assert_eq!(error_msg, "Expected a type, found \"let\"")
             }
 
             #[test]
             fn colon_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedToken::COLON, "function");
+                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::COLON, "function");
                 assert_eq!(error_msg, "Expected a \":\", found \"function\"")
             }
 
             #[test]
             fn lparenthese_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedToken::LPARENTHESE, "var_name");
+                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::LPARENTHESE, "var_name");
                 assert_eq!(error_msg, "Expected a \"(\", found \"var_name\"")
             }
             
             #[test]
             fn comma_or_rparenthese_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedToken::COMMAORRPARENTHESE, "var_name");
+                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::COMMAORRPARENTHESE, "var_name");
                 assert_eq!(error_msg, "Expected a \",\" or a \")\", found \"var_name\"")
             }
 
+            #[test]
+            fn variable_already_declared() {
+                let error_msg = scope_error_msg_handle(ScopeError::REDECLVAR, "var_name");
+                assert_eq!(error_msg, "Variable \"var_name\" has already been declared")
+            }
         }
     }
 }
@@ -982,7 +1074,7 @@ mod parser {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::NAME {
                                 return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::FUNCNAME, 
+                                        error_msgs::parser::ExpectedTokenError::FUNCNAME, 
                                         &lookahead.text
                                         ));
                             } 
@@ -991,7 +1083,7 @@ mod parser {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::LPARENTHESE {
                                 return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::LPARENTHESE, 
+                                        error_msgs::parser::ExpectedTokenError::LPARENTHESE, 
                                         &lookahead.text
                                         ));
                             }
@@ -1000,7 +1092,7 @@ mod parser {
                             loop {
                                 if lookahead.token_type != lexer::TokenType::NAME {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::FUNCNAME, 
+                                        error_msgs::parser::ExpectedTokenError::FUNCNAME, 
                                         &lookahead.text
                                         ));
                                 }    
@@ -1008,7 +1100,7 @@ mod parser {
                                 
                                 if lookahead.token_type != lexer::TokenType::COLON {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::COLON, 
+                                        error_msgs::parser::ExpectedTokenError::COLON, 
                                         &lookahead.text
                                         ));
                                 }    
@@ -1017,7 +1109,7 @@ mod parser {
                                 
                                 if lookahead.token_type != lexer::TokenType::TYPE {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::TYPE, 
+                                        error_msgs::parser::ExpectedTokenError::TYPE, 
                                         &lookahead.text
                                         ));
                                 }    
@@ -1026,26 +1118,40 @@ mod parser {
                                     lexer::TokenType::RPARENTHESE => break,
                                     lexer::TokenType::COMMA => (),
                                     _ => return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::COMMAORRPARENTHESE, 
+                                        error_msgs::parser::ExpectedTokenError::COMMAORRPARENTHESE, 
                                         &lookahead.text
                                         ))
                                 };
                             } 
                         }
                         "let" | "const" => {
+                            let is_const = match lookahead.text.as_str() {
+                                "const" => true,
+                                _ => false
+                            };
+
                             lookahead = self.lexer.peek_token(); 
                             if lookahead.token_type != lexer::TokenType::NAME { 
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::VARNAME, 
+                                        error_msgs::parser::ExpectedTokenError::VARNAME, 
                                         &lookahead.text
                                         ));
                             }
+
                             let var_name = lookahead.text;
+                            match self.scopes.find_symbol_in_current_scope(&var_name) {
+                                Some(_) => return Err(error_msgs::parser::scope_error_msg_handle(
+                                        error_msgs::parser::ScopeError::REDECLVAR,
+                                        &var_name)
+                                    ),
+                                None => ()
+
+                            }
                             
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::COLON {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::COLON, 
+                                        error_msgs::parser::ExpectedTokenError::COLON, 
                                         &lookahead.text
                                         ));
                             }
@@ -1053,12 +1159,18 @@ mod parser {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::TYPE {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedToken::TYPE, 
+                                        error_msgs::parser::ExpectedTokenError::TYPE, 
                                         &lookahead.text
                                         ));
                             }
 
+                            let var_type = lookahead.text;
+                            let new_symbol = match scope_manager::Symbol::new_by_string(&var_type, is_const){
+                                Some(x) => x,
+                                None => panic!("Crash and Burn. If you see this error, something went very wrong!")
+                            };
 
+                            self.scopes.insert_symbol(new_symbol, var_name);
                         }
 
                         _ => {
