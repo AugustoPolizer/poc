@@ -834,6 +834,49 @@ mod scope_manager{
     }
 }
 
+mod error_msg {
+
+    mod parser {
+        pub enum ExpectedToken {
+            FUNCNAME,
+            TYPE,
+            COLON,
+        }
+
+        pub fn wrong_token_msg_handle(error_type: ExpectedToken, wrong_token: &str) -> String {
+            match error_type {
+                ExpectedToken::FUNCNAME => format!("Expected a function name, found \"{}\"", wrong_token),
+                ExpectedToken::TYPE => format!("Expected a type, found \"{}\"", wrong_token),
+                ExpectedToken::COLON => format!("Expected a \":\", found \"{}\"", wrong_token)
+            }
+        }
+
+        #[cfg(test)]
+        mod tests {
+            use super::*;
+
+            #[test]
+            fn func_name_error_msg() {
+                let error_msg = wrong_token_msg_handle(ExpectedToken::FUNCNAME, "*");
+                assert_eq!(error_msg, "Expected a function name, found \"*\"")
+            }
+            
+            #[test]
+            fn type_error_msg() {
+                let error_msg = wrong_token_msg_handle(ExpectedToken::TYPE, "let");
+                assert_eq!(error_msg, "Expected a type, found \"let\"")
+            }
+
+            #[test]
+            fn colon_error_msg() {
+                let error_msg = wrong_token_msg_handle(ExpectedToken::COLON, "function");
+                assert_eq!(error_msg, "Expected a \":\", found \"function\"")
+            }
+
+        }
+    }
+}
+
 mod parser {
 
     use super::{lexer, scope_manager};
@@ -899,12 +942,12 @@ mod parser {
         fn parse(&mut self, root: &mut AstNode) -> Result<(), String> {
            
             let mut current_node = root;
-            let lookahead = self.lexer.peek_token();  
+            let mut lookahead = self.lexer.peek_token();  
             match lookahead.token_type {
                 lexer::TokenType::KEYWORD => {
                     match lookahead.text.as_str() {
                         "function" => {
-                            let mut lookahead = self.lexer.peek_token();
+                            lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::NAME {
                                 return Err(format!("Expected a function name, found \"{}\"", lookahead.text));
                             } 
@@ -929,7 +972,7 @@ mod parser {
                                 lookahead = self.lexer.peek_token();
                                 
                                 if lookahead.token_type != lexer::TokenType::TYPE {
-                                    return Err(format!("Expected a type\"\", found \"{}\"", lookahead.text));
+                                    return Err(format!("Expected a type, found \"{}\"", lookahead.text));
                                 }    
 
                                 match lookahead.token_type {
@@ -940,6 +983,22 @@ mod parser {
                             } 
                         }
                         "let" | "const" => {
+                            lookahead = self.lexer.peek_token(); 
+                            if lookahead.token_type != lexer::TokenType::NAME { 
+                                return Err(format!("Expected a variable name, found \"{}\"", lookahead.text));
+                            }
+                            let var_name = lookahead.text;
+                            
+                            lookahead = self.lexer.peek_token();
+                            if lookahead.token_type != lexer::TokenType::COLON {
+                                return Err(format!("Expected a \":\", found \"{}\"", lookahead.text));
+                            }
+
+                            lookahead = self.lexer.peek_token();
+                            if lookahead.token_type != lexer::TokenType::TYPE {
+                                return Err(format!("Expected a \":\", found \"{}\"", lookahead.text));
+                            }
+
 
                         }
 
