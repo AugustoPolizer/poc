@@ -834,20 +834,28 @@ mod scope_manager{
     }
 }
 
-mod error_msg {
+mod error_msgs {
 
-    mod parser {
+    pub mod parser {
         pub enum ExpectedToken {
             FUNCNAME,
+            VARNAME,
+            PARAMNAME,
             TYPE,
             COLON,
+            LPARENTHESE,
+            COMMAORRPARENTHESE,
         }
 
-        pub fn wrong_token_msg_handle(error_type: ExpectedToken, wrong_token: &str) -> String {
+        pub fn wrong_token_error_msg_handle(error_type: ExpectedToken, wrong_token: &str) -> String {
             match error_type {
                 ExpectedToken::FUNCNAME => format!("Expected a function name, found \"{}\"", wrong_token),
+                ExpectedToken::PARAMNAME => format!("Expected a param name, found \"{}\"", wrong_token),
+                ExpectedToken::VARNAME => format!("Expected a variable name, found \"{}\"", wrong_token),
                 ExpectedToken::TYPE => format!("Expected a type, found \"{}\"", wrong_token),
-                ExpectedToken::COLON => format!("Expected a \":\", found \"{}\"", wrong_token)
+                ExpectedToken::COLON => format!("Expected a \":\", found \"{}\"", wrong_token),
+                ExpectedToken::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
+                ExpectedToken::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token)
             }
         }
 
@@ -857,20 +865,44 @@ mod error_msg {
 
             #[test]
             fn func_name_error_msg() {
-                let error_msg = wrong_token_msg_handle(ExpectedToken::FUNCNAME, "*");
+                let error_msg = wrong_token_error_msg_handle(ExpectedToken::FUNCNAME, "*");
                 assert_eq!(error_msg, "Expected a function name, found \"*\"")
+            }
+
+            #[test] 
+            fn param_name_error_msg() {
+                let error_msg = wrong_token_error_msg_handle(ExpectedToken::PARAMNAME, "+");
+                assert_eq!(error_msg, "Expected a param name, found \"+\"")
+            }
+            
+            #[test] 
+            fn var_name_error_msg() {
+                let error_msg = wrong_token_error_msg_handle(ExpectedToken::VARNAME, ":");
+                assert_eq!(error_msg, "Expected a variable name, found \":\"")
             }
             
             #[test]
             fn type_error_msg() {
-                let error_msg = wrong_token_msg_handle(ExpectedToken::TYPE, "let");
+                let error_msg = wrong_token_error_msg_handle(ExpectedToken::TYPE, "let");
                 assert_eq!(error_msg, "Expected a type, found \"let\"")
             }
 
             #[test]
             fn colon_error_msg() {
-                let error_msg = wrong_token_msg_handle(ExpectedToken::COLON, "function");
+                let error_msg = wrong_token_error_msg_handle(ExpectedToken::COLON, "function");
                 assert_eq!(error_msg, "Expected a \":\", found \"function\"")
+            }
+
+            #[test]
+            fn lparenthese_error_msg() {
+                let error_msg = wrong_token_error_msg_handle(ExpectedToken::LPARENTHESE, "var_name");
+                assert_eq!(error_msg, "Expected a \"(\", found \"var_name\"")
+            }
+            
+            #[test]
+            fn comma_or_rparenthese_error_msg() {
+                let error_msg = wrong_token_error_msg_handle(ExpectedToken::COMMAORRPARENTHESE, "var_name");
+                assert_eq!(error_msg, "Expected a \",\" or a \")\", found \"var_name\"")
             }
 
         }
@@ -879,7 +911,7 @@ mod error_msg {
 
 mod parser {
 
-    use super::{lexer, scope_manager};
+    use super::{lexer, scope_manager, error_msgs};
    
     
     #[derive(PartialEq, Clone)]
@@ -949,54 +981,81 @@ mod parser {
                         "function" => {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::NAME {
-                                return Err(format!("Expected a function name, found \"{}\"", lookahead.text));
+                                return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::FUNCNAME, 
+                                        &lookahead.text
+                                        ));
                             } 
                             let function_name = lookahead.text;
 
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::LPARENTHESE {
-                                return Err(format!("Expected a \"(\", found \"{}\"", lookahead.text));
+                                return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::LPARENTHESE, 
+                                        &lookahead.text
+                                        ));
                             }
 
                             lookahead = self.lexer.peek_token();
                             loop {
                                 if lookahead.token_type != lexer::TokenType::NAME {
-                                    return Err(format!("Expected a function param name, found \"{}\"", lookahead.text));
+                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::FUNCNAME, 
+                                        &lookahead.text
+                                        ));
                                 }    
                                 lookahead = self.lexer.peek_token();
                                 
                                 if lookahead.token_type != lexer::TokenType::COLON {
-                                    return Err(format!("Expected a function \":\", found \"{}\"", lookahead.text));
+                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::COLON, 
+                                        &lookahead.text
+                                        ));
                                 }    
                                 
                                 lookahead = self.lexer.peek_token();
                                 
                                 if lookahead.token_type != lexer::TokenType::TYPE {
-                                    return Err(format!("Expected a type, found \"{}\"", lookahead.text));
+                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::TYPE, 
+                                        &lookahead.text
+                                        ));
                                 }    
 
                                 match lookahead.token_type {
                                     lexer::TokenType::RPARENTHESE => break,
                                     lexer::TokenType::COMMA => (),
-                                    _ => return Err(format!("Expected a \",\" or a \")\", found \"{}\"", lookahead.text))
+                                    _ => return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::COMMAORRPARENTHESE, 
+                                        &lookahead.text
+                                        ))
                                 };
                             } 
                         }
                         "let" | "const" => {
                             lookahead = self.lexer.peek_token(); 
                             if lookahead.token_type != lexer::TokenType::NAME { 
-                                return Err(format!("Expected a variable name, found \"{}\"", lookahead.text));
+                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::VARNAME, 
+                                        &lookahead.text
+                                        ));
                             }
                             let var_name = lookahead.text;
                             
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::COLON {
-                                return Err(format!("Expected a \":\", found \"{}\"", lookahead.text));
+                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::COLON, 
+                                        &lookahead.text
+                                        ));
                             }
 
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::TYPE {
-                                return Err(format!("Expected a \":\", found \"{}\"", lookahead.text));
+                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                        error_msgs::parser::ExpectedToken::TYPE, 
+                                        &lookahead.text
+                                        ));
                             }
 
 
