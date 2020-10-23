@@ -10,26 +10,31 @@ if, else, return, function, let e const
 +, -, *, /,  &&, ||, <, <=, >, >=
 
 # Grammar
-
+## Programa
 - PROG: (STATEMENT)* 
+## Comandos
 - STATEMENT: FUNCTION | VARIABLE | CMD 
 - CMD: IF | ELSE | FUNCCALL | RETURN  | ATTRIBUITION
 - IF: 'if' '(' EXPRESSION COMPOPBI EXPRESSION ')' '{' (STATEMENT)* '}' 
 - ELSE: 'else' '{' (STATEMENT)* '}' 
-- FUNCCALL: NAME '(' PARAMS? ')' ';' 
+- RETURN: 'return' EXPRESSION ';'
+- FUNCCALL: NAME '(' PARAMS? ')' ';'
+- VARIABLE: ('const' | 'let') NAME ':' ( SCALAR | ARRAY) ';'
+- ATTRIBUITION: NAME '=' EXPRESSION ';'
+## Funções
 - FUNCTION: NAME '(' FUNPARAM? ') -> NAME '{' STATEMENT*'}'
 - FUNCPARAMS : NAME ':' NAME (',' NAME ':' NAME) 
 - PARAMS: NAME (',' NAME)*
-- RETURN: 'return' EXPRESSION ';'
-- ATTRIBUITION: NAME '=' EXPRESSION ';'
+## Expressões
 - EXPRESSION: EXPRESSION BINARYOP EXPRESSION | '(' EXPRESSION ')' | VALUE
 - VALUE: (UNARYOP)? (LITERAL | NAME)
 - BINARYOP: '+' | '-' | '*' | '/' | BOOLBIOP
-- LITERAL: INT | FLOAT | STRING
-- VARIABLE: ('const' | 'let') NAME ':' ( SCALAR | ARRAY) ';'
-- SCALAR: NAME ('=' LITERAL | VALUE)?
+## Arrays
 - ARRAY: '[' NAME ']' ('=' '[' ELEMENTS ']')?
 - ELEMENTS: (VALUE | LITERAL) (',' (VALUE | LITERAL))*
+## Outras regras
+- LITERAL: INT | FLOAT | STRING
+- SCALAR: NAME ('=' LITERAL | VALUE)?
 - NAME: ALPA (ALPA)*
 - UNARYOP: '-' | '!'
 - BOOLBIOP: '&&'|'||'
