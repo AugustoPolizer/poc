@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 handlebars = "3.5.0"
+log = "0.4.11"

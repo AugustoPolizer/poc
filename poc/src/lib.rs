@@ -1040,6 +1040,15 @@ mod parser {
         node: ParsingNode,
         childrens: Vec<AstNode>
     }
+
+    impl AstNode {
+        fn new(node_type: NodeType, text: String) -> AstNode{
+            AstNode {
+                node: ParsingNode::new(node_type, text),
+                childrens: Vec::new()
+            }
+        }
+    }
    
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
@@ -1170,7 +1179,8 @@ mod parser {
                                 None => panic!("Crash and Burn. If you see this error, something went very wrong!")
                             };
 
-                            self.scopes.insert_symbol(new_symbol, var_name);
+                            self.scopes.insert_symbol(new_symbol, var_name.clone());
+                            current_node.childrens.push(AstNode::new(NodeType::VARDECL, var_name));
                         }
 
                         _ => {
