@@ -544,12 +544,12 @@ mod scope_manager{
             }
         }
 
-        pub fn new_by_string(symbol_type: &str, is_const: bool) -> Option<Symbol> {
+        pub fn new_by_string(symbol_type: &str, is_const: bool) -> Result<Symbol, String> {
             match symbol_type {
-                "int" => Some(Symbol{symbol_type: Type::INTEGER, is_const}),
-                "float" => Some(Symbol{symbol_type: Type::FLOAT, is_const}),
-                "string" => Some(Symbol{symbol_type: Type::STRING, is_const}),
-                _ => None
+                "int" => Ok(Symbol{symbol_type: Type::INTEGER, is_const}),
+                "float" => Ok(Symbol{symbol_type: Type::FLOAT, is_const}),
+                "string" => Ok(Symbol{symbol_type: Type::STRING, is_const}),
+                _ => Err(format!("Unknown type \"{}\"", symbol_type))
             }
         }
     }
@@ -616,7 +616,7 @@ mod scope_manager{
 
         pub fn insert_func_decl(& mut self, func_decl: FuncDecl, func_name: String) -> Result<(), &'static str> {
            if self.scopes.is_empty() {
-               return Err("There is no scope to insert symbol");
+               return Err("There is no scope to insert function declaration");
            }
            let last_scope_index = self.scopes.len() - 1;
            self.scopes[last_scope_index].function_table.insert(func_name, func_decl);
@@ -663,30 +663,30 @@ mod scope_manager{
         #[test]
         fn create_symbol() {
             let mut symbol = match Symbol::new_by_string("int", true) {
-                Some(x) => x,
-                None => return assert!(false)
+                Ok(x) => x,
+                Err(_) => return assert!(false)
             };
             assert_eq!(symbol.symbol_type, Type::INTEGER);
             assert_eq!(symbol.is_const, true);
 
             symbol = match Symbol::new_by_string("float", false) {
-                Some(x) => x,
-                None => return assert!(false)
+                Ok(x) => x,
+                Err(_) => return assert!(false)
             };
             assert_eq!(symbol.symbol_type, Type::FLOAT);
             assert_eq!(symbol.is_const, false);
             
 
             symbol = match Symbol::new_by_string("string", false) {
-                Some(x) => x,
-                None => return assert!(false)
+                Ok(x) => x,
+                Err(_) => return assert!(false)
             };
             assert_eq!(symbol.symbol_type, Type::STRING);
             assert_eq!(symbol.is_const, false);
             
             match Symbol::new_by_string("invalid_type", false) {
-                Some(_) => assert!(false),
-                None => assert!(true)
+                Ok(_) => assert!(false),
+                Err(_) => assert!(true)
             };
         }
 
@@ -914,7 +914,7 @@ mod scope_manager{
 mod error_msgs {
 
     pub mod parser {
-        pub enum ExpectedTokenError {
+        pub enum UnexpectedTokenError {
             FUNCNAME,
             VARNAME,
             PARAMNAME,
@@ -922,21 +922,29 @@ mod error_msgs {
             COLON,
             LPARENTHESE,
             COMMAORRPARENTHESE,
+            UNEXPECTEDTOKEN
         }
 
         pub enum ScopeError {
             REDECLVAR,
         }
 
-        pub fn wrong_token_error_msg_handle(error_type: ExpectedTokenError, wrong_token: &str) -> String {
+        pub enum InternalError {
+            UNABLETOINSERTSYMBOL,
+            UNABLETOCREATESYMBOL,
+        }
+
+
+        pub fn wrong_token_error_msg_handle(error_type: UnexpectedTokenError, wrong_token: &str) -> String {
             match error_type {
-                ExpectedTokenError::FUNCNAME => format!("Expected a function name, found \"{}\"", wrong_token),
-                ExpectedTokenError::PARAMNAME => format!("Expected a param name, found \"{}\"", wrong_token),
-                ExpectedTokenError::VARNAME => format!("Expected a variable name, found \"{}\"", wrong_token),
-                ExpectedTokenError::TYPE => format!("Expected a type, found \"{}\"", wrong_token),
-                ExpectedTokenError::COLON => format!("Expected a \":\", found \"{}\"", wrong_token),
-                ExpectedTokenError::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
-                ExpectedTokenError::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token)
+                UnexpectedTokenError::FUNCNAME => format!("Expected a function name, found \"{}\"", wrong_token),
+                UnexpectedTokenError::PARAMNAME => format!("Expected a param name, found \"{}\"", wrong_token),
+                UnexpectedTokenError::VARNAME => format!("Expected a variable name, found \"{}\"", wrong_token),
+                UnexpectedTokenError::TYPE => format!("Expected a type, found \"{}\"", wrong_token),
+                UnexpectedTokenError::COLON => format!("Expected a \":\", found \"{}\"", wrong_token),
+                UnexpectedTokenError::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
+                UnexpectedTokenError::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token),
+                UnexpectedTokenError::UNEXPECTEDTOKEN => format!("Unexpected token found: \"{}\"", wrong_token)
             }
         }
 
@@ -946,56 +954,90 @@ mod error_msgs {
             }
         }
 
+        pub fn internal_error_msg_handle(error_type: InternalError, error: &str) -> String {
+            match error_type {
+                InternalError::UNABLETOINSERTSYMBOL => format!("Internal error: Unable to insert symbol into scope: {}", error),
+                InternalError::UNABLETOCREATESYMBOL => format!("Internal error: Unable to create symbol: {}", error),
+            }
+        }
+
         #[cfg(test)]
         mod tests {
             use super::*;
 
+            // UnexpectedTokenError 
             #[test]
             fn func_name_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::FUNCNAME, "*");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::FUNCNAME, "*");
                 assert_eq!(error_msg, "Expected a function name, found \"*\"")
             }
 
             #[test] 
             fn param_name_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::PARAMNAME, "+");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::PARAMNAME, "+");
                 assert_eq!(error_msg, "Expected a param name, found \"+\"")
             }
             
             #[test] 
             fn var_name_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::VARNAME, ":");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::VARNAME, ":");
                 assert_eq!(error_msg, "Expected a variable name, found \":\"")
             }
             
             #[test]
             fn type_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::TYPE, "let");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::TYPE, "let");
                 assert_eq!(error_msg, "Expected a type, found \"let\"")
             }
 
             #[test]
             fn colon_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::COLON, "function");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::COLON, "function");
                 assert_eq!(error_msg, "Expected a \":\", found \"function\"")
             }
 
             #[test]
             fn lparenthese_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::LPARENTHESE, "var_name");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::LPARENTHESE, "var_name");
                 assert_eq!(error_msg, "Expected a \"(\", found \"var_name\"")
             }
             
             #[test]
             fn comma_or_rparenthese_error_msg() {
-                let error_msg = wrong_token_error_msg_handle(ExpectedTokenError::COMMAORRPARENTHESE, "var_name");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::COMMAORRPARENTHESE, "var_name");
                 assert_eq!(error_msg, "Expected a \",\" or a \")\", found \"var_name\"")
             }
 
             #[test]
+            fn unexpected_token() {
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::UNEXPECTEDTOKEN, "banana");
+                assert_eq!(error_msg, "Unexpected token found: \"banana\"");
+            }
+
+            // ScopeError
+            #[test]
             fn variable_already_declared() {
                 let error_msg = scope_error_msg_handle(ScopeError::REDECLVAR, "var_name");
                 assert_eq!(error_msg, "Variable \"var_name\" has already been declared")
+            }
+
+            // InternalError
+            #[test]
+            fn unable_to_insert_symbol() {
+                let error_msg = internal_error_msg_handle(
+                    InternalError::UNABLETOINSERTSYMBOL, 
+                    "There is no scope to insert symbol"
+                    );
+                assert_eq!(error_msg, "Internal error: Unable to insert symbol into scope: There is no scope to insert symbol");
+            }
+            
+            #[test]
+            fn unable_to_create_symbol() {
+                let error_msg = internal_error_msg_handle(
+                    InternalError::UNABLETOCREATESYMBOL, 
+                    "Unknown type \"u32\""
+                    );
+                assert_eq!(error_msg, "Internal error: Unable to create symbol: Unknown type \"u32\"");
             }
         }
     }
@@ -1083,7 +1125,7 @@ mod parser {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::NAME {
                                 return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::FUNCNAME, 
+                                        error_msgs::parser::UnexpectedTokenError::FUNCNAME, 
                                         &lookahead.text
                                         ));
                             } 
@@ -1092,7 +1134,7 @@ mod parser {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::LPARENTHESE {
                                 return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::LPARENTHESE, 
+                                        error_msgs::parser::UnexpectedTokenError::LPARENTHESE, 
                                         &lookahead.text
                                         ));
                             }
@@ -1101,7 +1143,7 @@ mod parser {
                             loop {
                                 if lookahead.token_type != lexer::TokenType::NAME {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::FUNCNAME, 
+                                        error_msgs::parser::UnexpectedTokenError::FUNCNAME, 
                                         &lookahead.text
                                         ));
                                 }    
@@ -1109,7 +1151,7 @@ mod parser {
                                 
                                 if lookahead.token_type != lexer::TokenType::COLON {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::COLON, 
+                                        error_msgs::parser::UnexpectedTokenError::COLON, 
                                         &lookahead.text
                                         ));
                                 }    
@@ -1118,7 +1160,7 @@ mod parser {
                                 
                                 if lookahead.token_type != lexer::TokenType::TYPE {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::TYPE, 
+                                        error_msgs::parser::UnexpectedTokenError::TYPE, 
                                         &lookahead.text
                                         ));
                                 }    
@@ -1127,7 +1169,7 @@ mod parser {
                                     lexer::TokenType::RPARENTHESE => break,
                                     lexer::TokenType::COMMA => (),
                                     _ => return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::COMMAORRPARENTHESE, 
+                                        error_msgs::parser::UnexpectedTokenError::COMMAORRPARENTHESE, 
                                         &lookahead.text
                                         ))
                                 };
@@ -1142,7 +1184,7 @@ mod parser {
                             lookahead = self.lexer.peek_token(); 
                             if lookahead.token_type != lexer::TokenType::NAME { 
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::VARNAME, 
+                                        error_msgs::parser::UnexpectedTokenError::VARNAME, 
                                         &lookahead.text
                                         ));
                             }
@@ -1160,7 +1202,7 @@ mod parser {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::COLON {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::COLON, 
+                                        error_msgs::parser::UnexpectedTokenError::COLON, 
                                         &lookahead.text
                                         ));
                             }
@@ -1168,30 +1210,51 @@ mod parser {
                             lookahead = self.lexer.peek_token();
                             if lookahead.token_type != lexer::TokenType::TYPE {
                                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::ExpectedTokenError::TYPE, 
+                                        error_msgs::parser::UnexpectedTokenError::TYPE, 
                                         &lookahead.text
                                         ));
                             }
 
                             let var_type = lookahead.text;
                             let new_symbol = match scope_manager::Symbol::new_by_string(&var_type, is_const){
-                                Some(x) => x,
-                                None => panic!("Crash and Burn. If you see this error, something went very wrong!")
+                                Ok(x) => x,
+                                Err(e) => {
+                                    return Err(error_msgs::parser::internal_error_msg_handle(
+                                            error_msgs::parser::InternalError::UNABLETOCREATESYMBOL, 
+                                            &e
+                                            ));
+                                }
                             };
 
-                            self.scopes.insert_symbol(new_symbol, var_name.clone());
+                            match self.scopes.insert_symbol(new_symbol, var_name.clone()) {
+                                Ok(_) => (),
+                                Err(e) => {
+                                    return Err(error_msgs::parser::internal_error_msg_handle(
+                                            error_msgs::parser::InternalError::UNABLETOINSERTSYMBOL, 
+                                            e
+                                            ));
+                                }
+                            }
                             current_node.childrens.push(AstNode::new(NodeType::VARDECL, var_name));
                         }
 
                         _ => {
-                            panic!("Crash and Burn. If you see this error, something went very wrong!");
+                            return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                error_msgs::parser::UnexpectedTokenError::UNEXPECTEDTOKEN, 
+                                &lookahead.text
+                                ));
                         }
                     }
                 }
                 _ => {
-                    panic!("Crash and Burn. If you see this error, something went very wrong!");
+                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::UNEXPECTEDTOKEN, 
+                        &lookahead.text
+                        ));
                 }
             }
+
+            // End of parse function
             Ok(())
         }
     }

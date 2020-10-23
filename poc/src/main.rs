@@ -30,7 +30,7 @@ fn main() {
         Ok(_) => (),
         Err(e) => {
             println!("Error on log initialization: {}", e);
-            retur;
+            return;
         }
     }
 
