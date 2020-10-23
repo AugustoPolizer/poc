@@ -68,6 +68,10 @@ mod lexer {
             token
         }
 
+        pub fn consume_all_peeked_tokens(&mut self) {
+            self.peeked_tokens.clear();
+        }
+
         pub fn peek_token(&mut self) -> Token {
             let token = self.get_token();
             self.peeked_tokens.push_back(token.clone());
@@ -493,6 +497,23 @@ mod lexer {
         }
         
         #[test]
+        fn clear_all_peeked_tokens() {
+            let code = r"
+                let a: int = 10; 
+                ";
+            let mut lexer: Lexer = Lexer::new(&code);
+            
+            lexer.peek_token();
+            lexer.peek_token();
+            lexer.peek_token();
+
+            lexer.consume_all_peeked_tokens();
+            let token = lexer.peek_token();
+
+            assert_eq!(token.text, "int");
+        }
+
+        #[test]
         fn consume_and_peek() {
             let code = r"
                 let a: int = 10; 
@@ -654,6 +675,7 @@ mod scope_manager{
             }
             None
         }
+        
     }
 
     #[cfg(test)]
