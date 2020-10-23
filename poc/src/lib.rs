@@ -922,6 +922,7 @@ mod error_msgs {
             COLON,
             LPARENTHESE,
             COMMAORRPARENTHESE,
+            UNEXPECTEDKEYWORD,
             UNEXPECTEDTOKEN
         }
 
@@ -944,6 +945,7 @@ mod error_msgs {
                 UnexpectedTokenError::COLON => format!("Expected a \":\", found \"{}\"", wrong_token),
                 UnexpectedTokenError::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
                 UnexpectedTokenError::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token),
+                UnexpectedTokenError::UNEXPECTEDKEYWORD => format!("Unexpected keyword found: \"{}\"", wrong_token),
                 UnexpectedTokenError::UNEXPECTEDTOKEN => format!("Unexpected token found: \"{}\"", wrong_token)
             }
         }
@@ -1010,8 +1012,14 @@ mod error_msgs {
 
             #[test]
             fn unexpected_token() {
-                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::UNEXPECTEDTOKEN, "banana");
-                assert_eq!(error_msg, "Unexpected token found: \"banana\"");
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::UNEXPECTEDTOKEN, "token");
+                assert_eq!(error_msg, "Unexpected token found: \"token\"");
+            }
+
+            #[test]
+            fn unexpected_keyword() {
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::UNEXPECTEDKEYWORD, "keyword");
+                assert_eq!(error_msg, "Unexpected keyword found: \"keyword\"");
             }
 
             // ScopeError
@@ -1174,6 +1182,8 @@ mod parser {
                                         ))
                                 };
                             } 
+
+                            // TODO: Finish function parsing implementation
                         }
                         "let" | "const" => {
                             let is_const = match lookahead.text.as_str() {
@@ -1236,16 +1246,28 @@ mod parser {
                                 }
                             }
                             current_node.childrens.push(AstNode::new(NodeType::VARDECL, var_name));
+                            // TODO: Implement attribution with variable declaration
                         }
-
+                        "if" => {
+                            // TODO: if statement
+                        }
+                        "else" => {
+                            // TODO: else statement
+                        }
+                        "return" => {
+                            // TODO: return statement
+                        }
                         _ => {
                             return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                error_msgs::parser::UnexpectedTokenError::UNEXPECTEDTOKEN, 
+                                error_msgs::parser::UnexpectedTokenError::UNEXPECTEDKEYWORD, 
                                 &lookahead.text
                                 ));
                         }
                     }
                 }
+                lexer::TokenType::NAME => {
+                    // TODO: attribution && funccall
+                },
                 _ => {
                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
                         error_msgs::parser::UnexpectedTokenError::UNEXPECTEDTOKEN, 
