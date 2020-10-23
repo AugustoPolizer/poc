@@ -22,7 +22,7 @@ if, else, return, function, let e const
 - VARIABLE: ('const' | 'let') NAME ':' ( SCALAR | ARRAY) ';'
 - ATTRIBUITION: NAME '=' EXPRESSION ';'
 ## Funções
-- FUNCTION: NAME '(' FUNPARAM? ') -> NAME '{' STATEMENT*'}'
+- FUNCTION: 'function' NAME '(' FUNPARAM? ') -> NAME '{' STATEMENT*'}'
 - FUNCPARAMS : NAME ':' NAME (',' NAME ':' NAME) 
 - PARAMS: NAME (',' NAME)*
 ## Expressões
