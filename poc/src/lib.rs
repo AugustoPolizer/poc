@@ -551,7 +551,8 @@ mod scope_manager{
         FLOAT,
         STRING
     }
-
+    
+    #[derive(Clone)]
     pub struct Symbol {
         symbol_type: Type,
         is_const: bool
@@ -575,6 +576,7 @@ mod scope_manager{
         }
     }
 
+    #[derive(Clone)]
     pub struct FuncDecl {
         return_type: Type,
         params: Vec<Symbol>
@@ -645,8 +647,7 @@ mod scope_manager{
            Ok(())
         }
 
-
-        pub fn find_symbol_in_current_scope(&mut self, name: &str) -> Option<&Symbol> {
+        pub fn find_symbol_in_current_scope(& self, name: &str) -> Option<&Symbol> {
             let last_scope_index = self.scopes.len() - 1;
             match self.scopes[last_scope_index].symbol_table.get(name) {
                 Some(s) => Some(s),
@@ -654,7 +655,7 @@ mod scope_manager{
             }
         }
 
-        pub fn find_symbol(&mut self, name: &str) -> Option<&Symbol> {
+        pub fn find_symbol(& self, name: &str) -> Option<&Symbol> {
             let iter = self.scopes.iter().rev();
             for scope in iter {
                 match scope.symbol_table.get(name) {
@@ -665,7 +666,15 @@ mod scope_manager{
             None
         }
         
-        pub fn find_func_decl(&mut self, name: &str) -> Option<&FuncDecl> {
+        pub fn find_func_decl_in_current_scope(& self, name: &str) -> Option<&FuncDecl> {
+            let last_scope_index = self.scopes.len() - 1;
+            match self.scopes[last_scope_index].function_table.get(name) {
+                Some(s) => Some(s),
+                None => None
+            }
+        }
+        
+        pub fn find_func_decl(& self, name: &str) -> Option<&FuncDecl> {
             let iter = self.scopes.iter().rev();
             for scope in iter {
                 match scope.function_table.get(name) {
@@ -1121,13 +1130,19 @@ mod parser {
             }
         }
     }
-   
+    // Used only as return type of function find_name_in_current_scope 
+    enum ScopeTypes {
+        Symbol(scope_manager::Symbol),
+        FuncDecl(scope_manager::FuncDecl)
+    }
+
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
         scopes: scope_manager::ScopeManager
     }
 
     impl<'a> Parser<'a> {
+
         pub fn new(code: &str) -> Parser {
            Parser {
                lexer: lexer::Lexer::new(code),
@@ -1301,15 +1316,29 @@ mod parser {
             // End of parse function
             Ok(())
         }
+
+        fn find_name_in_current_scope(& self, name: &str) ->  Option<ScopeTypes> {
+            if let Some(symbol) = self.scopes.find_symbol_in_current_scope(name){
+                return Some(ScopeTypes::Symbol(symbol.clone()));
+            } else {
+                if let Some(func_decl) = self.scopes.find_func_decl_in_current_scope(name) {
+                   return Some(ScopeTypes::FuncDecl(func_decl.clone())); 
+                } else {
+                    return None
+                }
+            }
+        }
     }
+
+
 
     #[cfg(test)]
     mod tests {
         use super::*;
 
         #[test]
-        fn template() {
-            assert_eq!(1 + 1, 2);
+        fn find_name_in_current_scope() {
+            
         }
     }
 }
