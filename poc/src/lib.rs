@@ -1187,133 +1187,20 @@ mod parser {
                 lexer::TokenType::KEYWORD => {
                     match lookahead.text.as_str() {
                         "function" => {
-                            lookahead = self.lexer.peek_token();
-                            if lookahead.token_type != lexer::TokenType::NAME {
-                                return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::FUNCNAME, 
-                                        &lookahead.text
-                                        ));
-                            } 
-                            let function_name = lookahead.text;
-
-                            lookahead = self.lexer.peek_token();
-                            if lookahead.token_type != lexer::TokenType::LPARENTHESE {
-                                return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::LPARENTHESE, 
-                                        &lookahead.text
-                                        ));
+                            match self.parse_function_decl() {
+                                Ok(_) => (),
+                                Err(e) => return Err(e)
                             }
-
-                            lookahead = self.lexer.peek_token();
-                            loop {
-                                if lookahead.token_type != lexer::TokenType::NAME {
-                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::FUNCNAME, 
-                                        &lookahead.text
-                                        ));
-                                }    
-                                lookahead = self.lexer.peek_token();
-                                
-                                if lookahead.token_type != lexer::TokenType::COLON {
-                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::COLON, 
-                                        &lookahead.text
-                                        ));
-                                }    
-                                
-                                lookahead = self.lexer.peek_token();
-                                
-                                if lookahead.token_type != lexer::TokenType::TYPE {
-                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::TYPE, 
-                                        &lookahead.text
-                                        ));
-                                }    
-
-                                match lookahead.token_type {
-                                    lexer::TokenType::RPARENTHESE => break,
-                                    lexer::TokenType::COMMA => (),
-                                    _ => return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::COMMAORRPARENTHESE, 
-                                        &lookahead.text
-                                        ))
-                                };
-                            } 
-
-                            // TODO: Finish function parsing implementation
                         }
                         "let" | "const" => {
                             let is_const = match lookahead.text.as_str() {
                                 "const" => true,
                                 _ => false
                             };
-
-                            lookahead = self.lexer.peek_token(); 
-                            if lookahead.token_type != lexer::TokenType::NAME { 
-                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::VARNAME, 
-                                        &lookahead.text
-                                        ));
-                            }
-
-                            let var_name = lookahead.text;
-                            match self.find_name_in_current_scope(&var_name) {
-                                Some(_) => return Err(error_msgs::parser::scope_error_msg_handle(
-                                        error_msgs::parser::ScopeError::ALREADYDECLARED,
-                                        &var_name)
-                                    ),
-                                None => ()
-
-                            }
-                            
-                            lookahead = self.lexer.peek_token();
-                            if lookahead.token_type != lexer::TokenType::COLON {
-                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::COLON, 
-                                        &lookahead.text
-                                        ));
-                            }
-
-                            lookahead = self.lexer.peek_token();
-                            if lookahead.token_type != lexer::TokenType::TYPE {
-                                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                        error_msgs::parser::UnexpectedTokenError::TYPE, 
-                                        &lookahead.text
-                                        ));
-                            }
-
-                            let var_type = lookahead.text;
-                            let new_symbol = match scope_manager::Symbol::new_by_string(&var_type, is_const){
-                                Ok(x) => x,
-                                Err(e) => {
-                                    return Err(error_msgs::parser::internal_error_msg_handle(
-                                            error_msgs::parser::InternalError::UNABLETOCREATESYMBOL, 
-                                            &e
-                                            ));
-                                }
-                            };
-
-                            match self.scopes.insert_symbol(new_symbol, var_name.clone()) {
+                            match self.parse_var_decl(is_const) {
                                 Ok(_) => (),
-                                Err(e) => {
-                                    return Err(error_msgs::parser::internal_error_msg_handle(
-                                            error_msgs::parser::InternalError::UNABLETOINSERTSYMBOL, 
-                                            e
-                                            ));
-                                }
+                                Err(e) => return Err(e)
                             }
-                            
-                            lookahead = self.lexer.peek_token();
-                            if lookahead.token_type != lexer::TokenType::SEMICOLON {
-                                return Err(error_msgs::parser::wrong_token_error_msg_handle(
-                                    error_msgs::parser::UnexpectedTokenError::SEMICOLON, 
-                                    &lookahead.text
-                                    ));
-                            }
-
-                            self.lexer.consume_all_peeked_tokens();
-                            current_node.childrens.push(AstNode::new(NodeType::VARDECL, var_name));
-                            // TODO: Implement attribution with variable declaration
                         }
                         "if" => {
                             // TODO: if statement
@@ -1333,7 +1220,17 @@ mod parser {
                     }
                 }
                 lexer::TokenType::NAME => {
+                    lookahead = self.lexer.peek_token();
+                    if lookahead.token_type == lexer::TokenType::ATTR {
 
+                    } else if lookahead.token_type == lexer::TokenType::LPARENTHESE {
+
+                    } else {
+                        return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                            error_msgs::parser::UnexpectedTokenError::UNEXPECTEDTOKEN, 
+                            &lookahead.text
+                            ));
+                    }
                 },
                 _ => {
                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
@@ -1358,6 +1255,137 @@ mod parser {
                 }
             }
         }
+
+        fn parse_function_decl(&mut self) -> Result<AstNode, String> {
+            let mut lookahead = self.lexer.peek_token();
+            if lookahead.token_type != lexer::TokenType::NAME {
+                return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::FUNCNAME, 
+                        &lookahead.text
+                        ));
+            } 
+            let function_name = lookahead.text;
+
+            lookahead = self.lexer.peek_token();
+            if lookahead.token_type != lexer::TokenType::LPARENTHESE {
+                return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::LPARENTHESE, 
+                        &lookahead.text
+                        ));
+            }
+
+            lookahead = self.lexer.peek_token();
+            loop {
+                if lookahead.token_type != lexer::TokenType::NAME {
+                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::FUNCNAME, 
+                        &lookahead.text
+                        ));
+                }    
+                lookahead = self.lexer.peek_token();
+                
+                if lookahead.token_type != lexer::TokenType::COLON {
+                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::COLON, 
+                        &lookahead.text
+                        ));
+                }    
+                
+                lookahead = self.lexer.peek_token();
+                
+                if lookahead.token_type != lexer::TokenType::TYPE {
+                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::TYPE, 
+                        &lookahead.text
+                        ));
+                }    
+
+                match lookahead.token_type {
+                    lexer::TokenType::RPARENTHESE => break,
+                    lexer::TokenType::COMMA => (),
+                    _ => return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::COMMAORRPARENTHESE, 
+                        &lookahead.text
+                        ))
+                };
+            } 
+
+            Ok(AstNode::new(NodeType::FUNCDECL, function_name))
+            // TODO: Finish function parsing implementation
+        }
+
+        fn parse_var_decl(&mut self, is_const: bool) -> Result<AstNode, String> { 
+
+            let mut lookahead = self.lexer.peek_token(); 
+            if lookahead.token_type != lexer::TokenType::NAME { 
+                return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                    error_msgs::parser::UnexpectedTokenError::VARNAME, 
+                    &lookahead.text
+                    ));
+            }
+
+            let var_name = lookahead.text;
+            match self.find_name_in_current_scope(&var_name) {
+                Some(_) => return Err(error_msgs::parser::scope_error_msg_handle(
+                        error_msgs::parser::ScopeError::ALREADYDECLARED,
+                        &var_name)
+                    ),
+                None => ()
+
+            }
+            
+            lookahead = self.lexer.peek_token();
+            if lookahead.token_type != lexer::TokenType::COLON {
+                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::COLON, 
+                        &lookahead.text
+                        ));
+            }
+
+            lookahead = self.lexer.peek_token();
+            if lookahead.token_type != lexer::TokenType::TYPE {
+                    return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                        error_msgs::parser::UnexpectedTokenError::TYPE, 
+                        &lookahead.text
+                        ));
+            }
+
+            let var_type = lookahead.text;
+            let new_symbol = match scope_manager::Symbol::new_by_string(&var_type, is_const){
+                Ok(x) => x,
+                Err(e) => {
+                    return Err(error_msgs::parser::internal_error_msg_handle(
+                            error_msgs::parser::InternalError::UNABLETOCREATESYMBOL, 
+                            &e
+                            ));
+                }
+            };
+
+            match self.scopes.insert_symbol(new_symbol, var_name.clone()) {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err(error_msgs::parser::internal_error_msg_handle(
+                            error_msgs::parser::InternalError::UNABLETOINSERTSYMBOL, 
+                            e
+                            ));
+                }
+            }
+            
+            lookahead = self.lexer.peek_token();
+            if lookahead.token_type != lexer::TokenType::SEMICOLON {
+                return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                    error_msgs::parser::UnexpectedTokenError::SEMICOLON, 
+                    &lookahead.text
+                    ));
+            }
+
+            self.lexer.consume_all_peeked_tokens();
+            Ok(AstNode::new(NodeType::VARDECL, var_name))
+            // TODO: Implement attribution with variable declaration
+
+        }
+
+
     }
 
 
