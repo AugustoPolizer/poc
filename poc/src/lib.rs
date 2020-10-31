@@ -969,7 +969,7 @@ mod error_msgs {
         }
 
         pub enum ScopeError {
-            REDECLVAR,
+            ALREADYDECLARED,
         }
 
         pub enum InternalError {
@@ -994,7 +994,7 @@ mod error_msgs {
 
         pub fn scope_error_msg_handle(error_type: ScopeError, error: &str) -> String {
             match error_type {
-                ScopeError::REDECLVAR => format!("Variable \"{}\" has already been declared", error),
+                    ScopeError::ALREADYDECLARED => format!("Identifier \"{}\" has already been declared", error),
             }
         }
 
@@ -1066,9 +1066,9 @@ mod error_msgs {
 
             // ScopeError
             #[test]
-            fn variable_already_declared() {
-                let error_msg = scope_error_msg_handle(ScopeError::REDECLVAR, "var_name");
-                assert_eq!(error_msg, "Variable \"var_name\" has already been declared")
+            fn already_been_declared() {
+                let error_msg = scope_error_msg_handle(ScopeError::ALREADYDECLARED, "var_name");
+                assert_eq!(error_msg, "Identifier \"var_name\" has already been declared");
             }
 
             // InternalError
@@ -1249,9 +1249,9 @@ mod parser {
                             }
 
                             let var_name = lookahead.text;
-                            match self.scopes.find_symbol_in_current_scope(&var_name) {
+                            match self.find_name_in_current_scope(&var_name) {
                                 Some(_) => return Err(error_msgs::parser::scope_error_msg_handle(
-                                        error_msgs::parser::ScopeError::REDECLVAR,
+                                        error_msgs::parser::ScopeError::ALREADYDECLARED,
                                         &var_name)
                                     ),
                                 None => ()
