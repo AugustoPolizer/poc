@@ -631,6 +631,7 @@ mod scope_manager{
            if self.scopes.is_empty() {
                return Err("There is no scope to insert symbol");
            }
+
            let idx = self.scopes.len() - 1;
            self.scopes[idx].symbol_table.insert(symbol_name, symbol);
 
@@ -641,6 +642,7 @@ mod scope_manager{
            if self.scopes.is_empty() {
                return Err("There is no scope to insert function declaration");
            }
+
            let last_scope_index = self.scopes.len() - 1;
            self.scopes[last_scope_index].function_table.insert(func_name, func_decl);
 
@@ -648,6 +650,10 @@ mod scope_manager{
         }
 
         pub fn find_symbol_in_current_scope(& self, name: &str) -> Option<&Symbol> {
+            if self.scopes.is_empty() {
+                return None
+            }
+
             let last_scope_index = self.scopes.len() - 1;
             match self.scopes[last_scope_index].symbol_table.get(name) {
                 Some(s) => Some(s),
@@ -667,6 +673,10 @@ mod scope_manager{
         }
         
         pub fn find_func_decl_in_current_scope(& self, name: &str) -> Option<&FuncDecl> {
+            if self.scopes.is_empty() {
+                return None
+            }
+
             let last_scope_index = self.scopes.len() - 1;
             match self.scopes[last_scope_index].function_table.get(name) {
                 Some(s) => Some(s),
@@ -676,6 +686,7 @@ mod scope_manager{
         
         pub fn find_func_decl(& self, name: &str) -> Option<&FuncDecl> {
             let iter = self.scopes.iter().rev();
+
             for scope in iter {
                 match scope.function_table.get(name) {
                     Some(f) => return Some(f),
@@ -1130,6 +1141,7 @@ mod parser {
             }
         }
     }
+
     // Used only as return type of function find_name_in_current_scope 
     enum ScopeTypes {
         Symbol(scope_manager::Symbol),
@@ -1337,8 +1349,14 @@ mod parser {
         use super::*;
 
         #[test]
-        fn find_name_in_current_scope() {
-            
+        fn find_name_in_current_scope_empty_scope() {
+            let parser = Parser::new("");
+
+            if let Some(_) = parser.find_name_in_current_scope("var_test"){
+                assert!(false);
+            } else {
+                assert!(true);
+            }
         }
     }
 }
