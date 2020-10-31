@@ -962,6 +962,7 @@ mod error_msgs {
             PARAMNAME,
             TYPE,
             COLON,
+            SEMICOLON,
             LPARENTHESE,
             COMMAORRPARENTHESE,
             UNEXPECTEDKEYWORD,
@@ -985,6 +986,7 @@ mod error_msgs {
                 UnexpectedTokenError::VARNAME => format!("Expected a variable name, found \"{}\"", wrong_token),
                 UnexpectedTokenError::TYPE => format!("Expected a type, found \"{}\"", wrong_token),
                 UnexpectedTokenError::COLON => format!("Expected a \":\", found \"{}\"", wrong_token),
+                UnexpectedTokenError::SEMICOLON => format!("Expected a \";\", found \"{}\"", wrong_token),
                 UnexpectedTokenError::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
                 UnexpectedTokenError::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token),
                 UnexpectedTokenError::UNEXPECTEDKEYWORD => format!("Unexpected keyword found: \"{}\"", wrong_token),
@@ -1038,6 +1040,12 @@ mod error_msgs {
             fn colon_error_msg() {
                 let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::COLON, "function");
                 assert_eq!(error_msg, "Expected a \":\", found \"function\"")
+            }
+
+            #[test]
+            fn semicollon_error_msg() {
+                let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::SEMICOLON, ":");
+                assert_eq!(error_msg, "Expected a \";\", found \":\"")
             }
 
             #[test]
@@ -1294,6 +1302,16 @@ mod parser {
                                             ));
                                 }
                             }
+                            
+                            lookahead = self.lexer.peek_token();
+                            if lookahead.token_type != lexer::TokenType::SEMICOLON {
+                                return Err(error_msgs::parser::wrong_token_error_msg_handle(
+                                    error_msgs::parser::UnexpectedTokenError::SEMICOLON, 
+                                    &lookahead.text
+                                    ));
+                            }
+
+                            self.lexer.consume_all_peeked_tokens();
                             current_node.childrens.push(AstNode::new(NodeType::VARDECL, var_name));
                             // TODO: Implement attribution with variable declaration
                         }
@@ -1315,7 +1333,7 @@ mod parser {
                     }
                 }
                 lexer::TokenType::NAME => {
-                    // TODO: attribution && funccall
+
                 },
                 _ => {
                     return Err(error_msgs::parser::wrong_token_error_msg_handle(
