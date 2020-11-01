@@ -39,11 +39,11 @@ if, else, return, function, let e const
 ## Outras regras
 - LITERAL: INT | FLOAT | STRING
 - SCALAR: NAME ('=' LITERAL | VALUE)?
-- NAME: ALPA (ALPA)*
+- NAME: (ALPA | '_') (ALPA | NUMBER | '_')*
 - UNARYOP: '-' | '!'
 - NUMBER: '0'..'9'
 - ALPA: ('a'..'z'|'A'..'Z')
-- STRING: '"'ALPA*'"'
+- STRING: '"'.*'"'
 - INT: NUMBER+
 - FLOAT: NUMBER* '.' NUMBER+
 
