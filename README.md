@@ -26,9 +26,13 @@ if, else, return, function, let e const
 - FUNCPARAMS : NAME ':' NAME (',' NAME ':' NAME) 
 - PARAMS: NAME (',' NAME)*
 ## Expressões
-- EXPRESSION: EXPRESSION BINARYOP EXPRESSION | '(' EXPRESSION ')' | VALUE
-- VALUE: (UNARYOP)? (LITERAL | NAME)
-- BINARYOP: '+' | '-' | '*' | '/' | BOOLBIOP
+- EXPRESSION: EQUALITY
+- EQUALITY: COMPRASION ( ("!=" | "==" ) COMPRASION)*
+- COMPRASION: TERM ( ( ">=" | "<=" | "<" | ">" ) TERM)*
+- TERM: FACTOR ( ("-" | "+") FACTOR)*
+- FACTOR: UNARY ( ( "/" | "*") UNARY)*
+- UNARY: (( "!" | "-") UNARY) | PRIMARY
+- PRIMARY: INT | FLOAT | STRING | 'false' | 'true'; 
 ## Arrays
 - ARRAY: '[' NAME ']' ('=' '[' ELEMENTS ']')?
 - ELEMENTS: (VALUE | LITERAL) (',' (VALUE | LITERAL))*
@@ -37,8 +41,6 @@ if, else, return, function, let e const
 - SCALAR: NAME ('=' LITERAL | VALUE)?
 - NAME: ALPA (ALPA)*
 - UNARYOP: '-' | '!'
-- BOOLBIOP: '&&'|'||'
-- COMPOP: '<'|'>'|'<='|'>='|'=='|'!='
 - NUMBER: '0'..'9'
 - ALPA: ('a'..'z'|'A'..'Z')
 - STRING: '"'ALPA*'"'
