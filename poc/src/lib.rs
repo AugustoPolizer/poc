@@ -1112,6 +1112,7 @@ mod parser {
         EXPR,
         ROOT,
         BINARYOP,
+        UNARYOP,
         FUNCDECL,
         VARDECL
     }
@@ -1168,6 +1169,15 @@ mod parser {
         FuncDecl(scope_manager::FuncDecl)
     }
 
+    fn match_token_text(comp_vec: Vec<&str>, token_text: &str) -> bool {
+        for text in comp_vec {
+            if text == token_text {
+                return true
+            }
+        } 
+        false
+    }
+
     struct Parser<'a>{
         lexer: lexer::Lexer<'a>,
         scopes: scope_manager::ScopeManager
@@ -1193,7 +1203,6 @@ mod parser {
 
         fn parse(&mut self, root: &mut AstNode) -> Result<(), String> {
            
-            let mut current_node = root;
             let mut lookahead = self.lexer.peek_token();  
             match lookahead.token_type {
                 lexer::TokenType::KEYWORD => {
@@ -1257,7 +1266,6 @@ mod parser {
             Ok(())
         }
 
-        fn match_toke
 
         fn find_name_in_current_scope(& self, name: &str) ->  Option<ScopeTypes> {
             if let Some(symbol) = self.scopes.find_symbol_in_current_scope(name){
@@ -1400,8 +1408,8 @@ mod parser {
 
         }
          
-
-        fn parse_expression(&mut self) -> AstNode {
+        // Expression parsing functions
+        fn expression(&mut self) -> AstNode {
             
             let mut primary = || {
             };
@@ -1409,36 +1417,77 @@ mod parser {
             let mut unary = || {
             };
 
-            let mut factor = || {
-            };
 
-            let mut term = || {
-            };
+            self.equality()
+        }
 
-            let mut comparison = || -> AstNode {
-                let mut expr = term();
+        fn equality(&mut self) -> AstNode {
+            let mut expr = self.comparison();
 
-                let mut lookahead = self.lexer.peek_token();
-            };
+            let mut lookahead = self.lexer.peek_token();
+            while match_token_text(vec!["==", "!="], &lookahead.text) {
+                let right = self.comparison();
+                expr = AstNode::new_with_children(NodeType::BINARYOP, lookahead.text, right, expr);
+                lookahead = self.lexer.peek_token();
+            } 
 
-            let mut equality = || -> AstNode {
-                let mut expr = comparison();
+            expr
+        }
 
-                let mut lookahead = self.lexer.peek_token();
-                while lookahead.text == "==" || lookahead.text == "!=" {
-                    let right = comparison();
-                    expr = AstNode::new_with_children(NodeType::BINARYOP, lookahead.text, right, expr);
-                    lookahead = self.lexer.peek_token();
-                } 
+        fn comparison(&mut self)-> AstNode {
+            let mut expr = self.term();
 
-                expr
-            };
+            let mut lookahead = self.lexer.peek_token();
+            while match_token_text(vec![">", ">=", "<", "<="], &lookahead.text) {
+                let right = self.term();
+                expr = AstNode::new_with_children(NodeType::BINARYOP, lookahead.text, right, expr);
+                lookahead = self.lexer.peek_token();
+            } 
 
-            let expression = || -> AstNode {
-                equality()
-            };
+            expr
+        }
 
-            expression()
+        fn term(&mut self) -> AstNode {
+            let mut expr = self.factor();
+
+            let mut lookahead = self.lexer.peek_token();
+            while match_token_text(vec!["+", "-"], &lookahead.text) {
+                let right = self.factor();
+                expr = AstNode::new_with_children(NodeType::BINARYOP, lookahead.text, right, expr);
+                lookahead = self.lexer.peek_token();
+            }
+
+            expr
+        }
+
+        fn factor(&mut self) -> AstNode {
+            let mut expr = self.unary();
+
+            let mut lookahead = self.lexer.peek_token();
+            while match_token_text(vec!["*", "/"], &lookahead.text) {
+                let right = self.unary();
+                expr = AstNode::new_with_children(NodeType::BINARYOP, lookahead.text, right, expr);
+                lookahead = self.lexer.peek_token();
+            }
+
+            expr
+        }
+
+        fn unary(&mut self) -> AstNode {
+            let lookahead = self.lexer.peek_token();
+            if match_token_text(vec!["!", "/"], lookahead.text) {
+                let expr = AstNode::new(NodeType::UNARYOP, lookahead.text);
+                let right = self.unary();
+                expr.insert_childern(right);
+                return expr;
+            }
+
+            primary()
+
+        }
+
+        fn primary(&mut self) -> AstNode {
+            
         }
 
         fn parse_function_call(&mut self) {
@@ -1462,6 +1511,12 @@ mod parser {
             } else {
                 assert!(true);
             }
+        }
+
+        #[test]
+        fn match_token_text_test() {
+            assert!(match_token_text(vec!("==", "!="), "=="));
+            assert!(!match_token_text(vec!("==", "!="), "+"));
         }
     }
 }
