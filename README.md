@@ -37,8 +37,6 @@ if, else, return, function, let e const
 - ARRAY: '[' NAME ']' ('=' '[' ELEMENTS ']')?
 - ELEMENTS: (VALUE | LITERAL) (',' (VALUE | LITERAL))*
 ## Outras regras
-- LITERAL: INT | FLOAT | STRING
-- SCALAR: NAME ('=' LITERAL | VALUE)?
 - NAME: (ALPA | '_') (ALPA | NUMBER | '_')*
 - UNARYOP: '-' | '!'
 - NUMBER: '0'..'9'
