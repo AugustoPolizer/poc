@@ -26,22 +26,23 @@ if, else, return, function, let e const
 - FUNCPARAMS : NAME ':' NAME (',' NAME ':' NAME) 
 - PARAMS: NAME (',' NAME)*
 ## Expressões
-- EXPRESSION: EXPRESSION BINARYOP EXPRESSION | '(' EXPRESSION ')' | VALUE
-- VALUE: (UNARYOP)? (LITERAL | NAME)
-- BINARYOP: '+' | '-' | '*' | '/' | BOOLBIOP
+- EXPRESSION: EQUALITY
+- EQUALITY: COMPARISON ( ("!=" | "==" ) COMPARISON)*
+- COMPARISON: TERM ( ( ">=" | "<=" | "<" | ">" ) TERM)*
+- TERM: FACTOR ( ("-" | "+") FACTOR)*
+- FACTOR: UNARY ( ( "/" | "*") UNARY)*
+- UNARY: (( "!" | "-") UNARY) | PRIMARY
+- PRIMARY: INT | FLOAT | STRING | 
 ## Arrays
 - ARRAY: '[' NAME ']' ('=' '[' ELEMENTS ']')?
 - ELEMENTS: (VALUE | LITERAL) (',' (VALUE | LITERAL))*
 ## Outras regras
-- LITERAL: INT | FLOAT | STRING
-- SCALAR: NAME ('=' LITERAL | VALUE)?
-- NAME: ALPA (ALPA)*
+- SCALAR: 'NAME' ('=' EXPRESSION)?
+- NAME: (ALPA | '_') (ALPA | NUMBER | '_')*
 - UNARYOP: '-' | '!'
-- BOOLBIOP: '&&'|'||'
-- COMPOP: '<'|'>'|'<='|'>='|'=='|'!='
 - NUMBER: '0'..'9'
 - ALPA: ('a'..'z'|'A'..'Z')
-- STRING: '"'ALPA*'"'
+- STRING: '"'.*'"'
 - INT: NUMBER+
 - FLOAT: NUMBER* '.' NUMBER+
 
