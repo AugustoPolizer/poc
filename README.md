@@ -27,12 +27,12 @@ if, else, return, function, let e const
 - PARAMS: NAME (',' NAME)*
 ## Expressões
 - EXPRESSION: EQUALITY
-- EQUALITY: COMPARISON ( ("!=" | "==" ) COMPARISON)*
-- COMPARISON: TERM ( ( ">=" | "<=" | "<" | ">" ) TERM)*
-- TERM: FACTOR ( ("-" | "+") FACTOR)*
-- FACTOR: UNARY ( ( "/" | "*") UNARY)*
-- UNARY: (( "!" | "-") UNARY) | PRIMARY
-- PRIMARY: INT | FLOAT | STRING | 
+- EQUALITY: COMPARISON ( ('!=' | '==' ) COMPARISON)*
+- COMPARISON: TERM ( ( '>=' | '<=' | '<' | '>' ) TERM)*
+- TERM: FACTOR ( ('-' | '+') FACTOR)*
+- FACTOR: UNARY ( ( '/' | '*') UNARY)*
+- UNARY: (( '!' | '-') UNARY) | PRIMARY
+- PRIMARY: INT | FLOAT | STRING | '(' EXPRESSION ')'
 ## Arrays
 - ARRAY: '[' NAME ']' ('=' '[' ELEMENTS ']')?
 - ELEMENTS: (VALUE | LITERAL) (',' (VALUE | LITERAL))*
