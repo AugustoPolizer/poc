@@ -1111,6 +1111,7 @@ mod parser {
         ATTR,
         EXPR,
         ROOT,
+        PRIMARY,
         BINARYOP,
         UNARYOP,
         FUNCDECL,
@@ -1152,7 +1153,7 @@ mod parser {
         }
 
         fn new_with_children(node_type: NodeType, text: String, right: AstNode, left: AstNode) -> AstNode {
-           let node = AstNode::new(node_type, text);
+           let mut node = AstNode::new(node_type, text);
            node.insert_children(left);
            node.insert_children(right);
            node
@@ -1244,7 +1245,7 @@ mod parser {
                     let name = lookahead.text;
                     lookahead = self.lexer.peek_token();
                     if lookahead.token_type == lexer::TokenType::ATTR {
-                        self.parse_expression();
+                        self.expression();
                     } else if lookahead.token_type == lexer::TokenType::LPARENTHESE {
                         self.parse_function_call();
                     } else {
@@ -1410,14 +1411,6 @@ mod parser {
          
         // Expression parsing functions
         fn expression(&mut self) -> AstNode {
-            
-            let mut primary = || {
-            };
-
-            let mut unary = || {
-            };
-
-
             self.equality()
         }
 
@@ -1475,19 +1468,19 @@ mod parser {
 
         fn unary(&mut self) -> AstNode {
             let lookahead = self.lexer.peek_token();
-            if match_token_text(vec!["!", "/"], lookahead.text) {
-                let expr = AstNode::new(NodeType::UNARYOP, lookahead.text);
+            if match_token_text(vec!["!", "/"], &lookahead.text) {
+                let mut expr = AstNode::new(NodeType::UNARYOP, lookahead.text);
                 let right = self.unary();
-                expr.insert_childern(right);
+                expr.insert_children(right);
                 return expr;
             }
 
-            primary()
+            self.primary()
 
         }
 
         fn primary(&mut self) -> AstNode {
-            
+            AstNode::new(NodeType::PRIMARY, String::from(""))
         }
 
         fn parse_function_call(&mut self) {
