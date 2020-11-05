@@ -275,6 +275,22 @@ mod lexer {
             assert_eq!(token.token_type, token_type);
         }
 
+        fn assert_token_equal_consume(lexer: &mut Lexer, text: &str, token_type: TokenType){
+            let token = lexer.consume_token();
+            assert_eq!(token.text, text);
+            assert_eq!(token.token_type, token_type);
+        }
+
+        fn assert_token_equal_peek(lexer: &mut Lexer, text: &str, token_type: TokenType){
+            let token = lexer.peek_token();
+            assert_eq!(token.text, text);
+            assert_eq!(token.token_type, token_type);
+        }
+
+        fn assert_token_equal_match(lexer: &mut Lexer, text: &str, token_type: TokenType, expected_result: bool){
+            assert_eq!(lexer.match_token(token_type, text), expected_result);
+        }
+
         #[test]
         fn get_token_simple_function() {
             let code = r"
@@ -467,12 +483,6 @@ mod lexer {
             assert_token_equal(&mut lexer, "EOF", TokenType::EOF);
         }
 
-        fn assert_token_equal_peek(lexer: &mut Lexer, text: &str, token_type: TokenType){
-            let token = lexer.peek_token();
-            assert_eq!(token.text, text);
-            assert_eq!(token.token_type, token_type);
-        }
-
         #[test]
         fn peek() {
             let code = r"
@@ -489,10 +499,6 @@ mod lexer {
             assert_token_equal_peek(&mut lexer, ";", TokenType::SEMICOLON);    
             assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
             assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
-        }
-        
-        fn assert_token_equal_match(lexer: &mut Lexer, text: &str, token_type: TokenType, expected_result: bool){
-            assert_eq!(lexer.match_token(token_type, text), expected_result);
         }
 
         #[test]
@@ -553,11 +559,6 @@ mod lexer {
             assert_token_equal_match(&mut lexer, "10", TokenType::INTEGER, true);    
             assert_token_equal_match(&mut lexer, ";", TokenType::SEMICOLON, true);    
             assert_token_equal_match(&mut lexer, "EOF", TokenType::EOF, true);    
-        }
-        fn assert_token_equal_consume(lexer: &mut Lexer, text: &str, token_type: TokenType){
-            let token = lexer.consume_token();
-            assert_eq!(token.text, text);
-            assert_eq!(token.token_type, token_type);
         }
 
         #[test]
@@ -767,29 +768,31 @@ mod scope_manager{
     mod tests {
         use super::*;
 
+        fn assert_symbol_equal(symbol: & Symbol, symbol_type: Type, is_const: bool) {
+            assert_eq!(symbol.symbol_type, symbol_type);
+            assert_eq!(symbol.is_const, is_const);
+        } 
+
         #[test]
         fn create_symbol() {
             let mut symbol = match Symbol::new_by_string("int", true) {
                 Ok(x) => x,
                 Err(_) => return assert!(false)
             };
-            assert_eq!(symbol.symbol_type, Type::INTEGER);
-            assert_eq!(symbol.is_const, true);
+            assert_symbol_equal(&symbol, Type::INTEGER, true);
 
             symbol = match Symbol::new_by_string("float", false) {
                 Ok(x) => x,
                 Err(_) => return assert!(false)
             };
-            assert_eq!(symbol.symbol_type, Type::FLOAT);
-            assert_eq!(symbol.is_const, false);
-            
 
+            assert_symbol_equal(&symbol, Type::FLOAT, false);
+            
             symbol = match Symbol::new_by_string("string", false) {
                 Ok(x) => x,
                 Err(_) => return assert!(false)
             };
-            assert_eq!(symbol.symbol_type, Type::STRING);
-            assert_eq!(symbol.is_const, false);
+            assert_symbol_equal(&symbol, Type::STRING, false);
             
             match Symbol::new_by_string("invalid_type", false) {
                 Ok(_) => assert!(false),
@@ -910,8 +913,7 @@ mod scope_manager{
                 Some(x) => x,
                 None => return assert!(false)
             };
-            assert_eq!(symbol.symbol_type, Type::INTEGER); 
-            assert_eq!(symbol.is_const, true); 
+            assert_symbol_equal(symbol, Type::INTEGER, true)
         } 
 
         #[test]
@@ -934,8 +936,7 @@ mod scope_manager{
                 Some(x) => x,
                 None => return assert!(false)
             };
-            assert_eq!(symbol.symbol_type, Type::FLOAT); 
-            assert_eq!(symbol.is_const, false); 
+            assert_symbol_equal(&symbol, Type::FLOAT, false);
             
             scope_manager.remove_scope();
             match scope_manager.find_symbol("var_test2") {
@@ -947,8 +948,7 @@ mod scope_manager{
                 Some(x) => x,
                 None => return assert!(false)
             };
-            assert_eq!(symbol.symbol_type, Type::INTEGER); 
-            assert_eq!(symbol.is_const, true); 
+            assert_symbol_equal(symbol, Type::INTEGER, true);
 
             scope_manager.remove_scope();
             match scope_manager.find_symbol("var_test1") {
