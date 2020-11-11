@@ -57,3 +57,10 @@ function fatorial(n : int) -> int {
 }
 ```
 
+# TODO List
+
+- Inserir mais informações nos tokens (Ex: linha e coluna).
+- Melhorar o tratamento de erros.
+- Remover códigos repetidos onde for possível e procurar oportunidades de
+  refatoração.
+- Começar a geração de código C.
