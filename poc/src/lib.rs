@@ -660,7 +660,7 @@ mod lexer {
         }
 
         #[test]
-        fn test_current_position_code_with_one_line() {
+        fn test_current_position_with_one_line() {
             let code = r"let a: int = 10;";
             let mut lexer: Lexer = Lexer::new(&code);
 
@@ -675,6 +675,48 @@ mod lexer {
             assert_token_equal_current_position(&mut lexer, 0, 0);
         }
 
+        #[test]
+        fn test_current_position_with_multiple_lines() {
+
+            let code = r"
+function attributionTest() {
+    const a : int = 1;
+    const b : float = 3.14;
+    let c : float = a + b;
+}";
+            let mut lexer: Lexer = Lexer::new(&code);
+
+            assert_token_equal_current_position(&mut lexer, 2, 1);
+            assert_token_equal_current_position(&mut lexer, 2, 10);
+            assert_token_equal_current_position(&mut lexer, 2, 25);
+            assert_token_equal_current_position(&mut lexer, 2, 26);
+            assert_token_equal_current_position(&mut lexer, 2, 28);
+            assert_token_equal_current_position(&mut lexer, 3, 5);
+            assert_token_equal_current_position(&mut lexer, 3, 11);
+            assert_token_equal_current_position(&mut lexer, 3, 13);
+            assert_token_equal_current_position(&mut lexer, 3, 15);
+            assert_token_equal_current_position(&mut lexer, 3, 19);
+            assert_token_equal_current_position(&mut lexer, 3, 21);
+            assert_token_equal_current_position(&mut lexer, 3, 22);
+            assert_token_equal_current_position(&mut lexer, 4, 5);
+            assert_token_equal_current_position(&mut lexer, 4, 11);
+            assert_token_equal_current_position(&mut lexer, 4, 13);
+            assert_token_equal_current_position(&mut lexer, 4, 15);
+            assert_token_equal_current_position(&mut lexer, 4, 21);
+            assert_token_equal_current_position(&mut lexer, 4, 23);
+            assert_token_equal_current_position(&mut lexer, 4, 27);
+            assert_token_equal_current_position(&mut lexer, 5, 5);
+            assert_token_equal_current_position(&mut lexer, 5, 9);
+            assert_token_equal_current_position(&mut lexer, 5, 11);
+            assert_token_equal_current_position(&mut lexer, 5, 13);
+            assert_token_equal_current_position(&mut lexer, 5, 19);
+            assert_token_equal_current_position(&mut lexer, 5, 21);
+            assert_token_equal_current_position(&mut lexer, 5, 23);
+            assert_token_equal_current_position(&mut lexer, 5, 25);
+            assert_token_equal_current_position(&mut lexer, 5, 26);
+            assert_token_equal_current_position(&mut lexer, 6, 1);
+            assert_token_equal_current_position(&mut lexer, 0, 0);
+        }
     }
 }
 
