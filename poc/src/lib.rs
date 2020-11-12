@@ -1,10 +1,15 @@
 mod lexer {
 
+
+    const TAB_WIDTH: u64 = 8;
+
     pub struct Lexer<'a> {
         code_iterator: std::iter::Peekable<std::str::Chars<'a>>,
         keywords: std::collections::HashSet<&'static str>,
         types: std::collections::HashSet<&'static str>,
-        peeked_tokens: std::collections::VecDeque<Token>
+        peeked_tokens: std::collections::VecDeque<Token>,
+        current_line: u64,
+        current_column: u64
     }
 
     #[derive(PartialEq, Debug, Clone)]
@@ -36,11 +41,13 @@ mod lexer {
     pub struct Token {
         pub token_type: TokenType,
         pub text: String,
+        line: u64,
+        column: u64
     }
 
     impl Token {
-        pub fn new(token_type: TokenType, text: String) -> Token {
-            Token { token_type, text }
+        pub fn new(token_type: TokenType, text: String, line: u64, column: u64) -> Token {
+            Token { token_type, text , line, column}
         }
     }
 
@@ -56,7 +63,9 @@ mod lexer {
                 code_iterator: raw_code.chars().peekable(),
                 keywords: ["function", "return", "if", "else", "let", "const"].iter().cloned().collect(),
                 types: ["int", "float", "string"].iter().cloned().collect(),
-                peeked_tokens: std::collections::VecDeque::new()
+                peeked_tokens: std::collections::VecDeque::new(),
+                current_line: 1,
+                current_column: 1
             }
         }
 
@@ -102,19 +111,23 @@ mod lexer {
 
             let mut lookahead = match self.code_iterator.peek() {
                 Some(c) => *c,
-                None => return Token::new(TokenType::EOF, String::from("EOF"))
+                None => return Token::new(TokenType::EOF, String::from("EOF"), 0, 0)
             };
 
             // Remove whitespaces 
             if lookahead == ' ' || lookahead == '\n' || lookahead == '\t' || lookahead == '\r' {
                 self.code_iterator.next();
+                self.update_iterator_position_by_witespaces(&lookahead);
                 loop {
                     lookahead = match self.code_iterator.peek() {
                         Some(c) => *c,
-                        None => return Token::new(TokenType::EOF, String::from("EOF")),
+                        None => return Token::new(TokenType::EOF, String::from("EOF"), 0, 0),
                     };
                     match lookahead {
-                        ' ' | '\n' | '\t' | '\r' => self.code_iterator.next(),
+                        ' ' | '\n' | '\t' | '\r' => { 
+                            self.code_iterator.next(); 
+                            self.update_iterator_position_by_witespaces(&lookahead);
+                        },
                         _ => break,
                     };
                 }
@@ -122,26 +135,28 @@ mod lexer {
             // Parsing tokens that need a lookahead equal to 2
             let mut parsing_tokens_ll2 = | second_possible_char: char, first_token_type: TokenType, second_token_type: TokenType| -> Token {
                 let mut buffer = String::new();
+                let start_column = self.current_column;
                 buffer.push(lookahead);
-                self.code_iterator.next();
+                self.consume_char();
                 let lookahead_2 = match self.code_iterator.peek() {
                     Some(c) => *c,
-                    None => return Token::new(first_token_type, buffer)
+                    None => return Token::new(first_token_type, buffer, self.current_line, start_column)
                 };
                 if lookahead_2 != second_possible_char {
-                    return Token::new(first_token_type, buffer);
+                    return Token::new(first_token_type, buffer, self.current_line, start_column);
                 }
                 buffer.push(lookahead_2);
-                self.code_iterator.next();
-                Token::new(second_token_type, buffer)
+                self.consume_char();
+                Token::new(second_token_type, buffer, self.current_line, start_column)
             };
 
             let result = match lookahead {
                 'a'..='z' | 'A'..='Z' => {
                     let mut buffer = String::new();
+                    let start_column = self.current_column;
                     loop {
                         buffer.push(lookahead);
-                        self.code_iterator.next();
+                        self.consume_char();
                         lookahead = match self.code_iterator.peek() {
                             Some(c) => *c,
                             None => break,
@@ -151,34 +166,37 @@ mod lexer {
                         }
                     }
                     if self.keywords.contains(buffer.as_str()) {
-                        return Token::new(TokenType::KEYWORD, buffer);
+                        println!("{}, {}", self.current_line, start_column);
+                        return Token::new(TokenType::KEYWORD, buffer, self.current_line, start_column);
                     } else if self.types.contains(buffer.as_str()){
-                        return Token::new(TokenType::TYPE, buffer);
+                        return Token::new(TokenType::TYPE, buffer, self.current_line, start_column);
                     }
-                    Token::new(TokenType::NAME, buffer)
+                    Token::new(TokenType::NAME, buffer, self.current_line, start_column)
                 }
                 '"' => {
                     let mut buffer = String::new();
+                    let start_column = self.current_column;
                     loop {
-                        self.code_iterator.next();
+                        self.consume_char();
                         lookahead = match self.code_iterator.peek() {
                             Some(c) => *c,
                             None => break,
                         };
                         if lookahead == '"' {
-                            self.code_iterator.next();
+                            self.consume_char();
                             break;
                         }
                         buffer.push(lookahead);
                     }
-                    Token::new(TokenType::STRING, buffer)
+                    Token::new(TokenType::STRING, buffer, self.current_line, start_column)
                 }
                 '0'..='9' => {
                     let mut float = false;
                     let mut buffer = String::new();
+                    let start_column = self.current_column;
                     loop {
                         buffer.push(lookahead);
-                        self.code_iterator.next();
+                        self.consume_char();
                         lookahead = match self.code_iterator.peek() {
                             Some(c) => *c,
                             None => break,
@@ -192,9 +210,9 @@ mod lexer {
                         }
                     }
                     if float {
-                        return Token::new(TokenType::FLOAT, buffer) 
+                        return Token::new(TokenType::FLOAT, buffer, self.current_line, start_column) 
                     }
-                    Token::new(TokenType::INTEGER, buffer) 
+                    Token::new(TokenType::INTEGER, buffer, self.current_line, start_column) 
                 }
                 '&' => {
                     parsing_tokens_ll2('&', TokenType::OP, TokenType::OP)
@@ -215,52 +233,82 @@ mod lexer {
                     parsing_tokens_ll2('=', TokenType::UNARYOP, TokenType::OP)
                 }
                 '+' | '*' | '/' => {
-                    self.code_iterator.next();
-                   Token::new(TokenType::OP, String::from(lookahead))
+                    let token = Token::new(TokenType::OP, String::from(lookahead), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 ';' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::SEMICOLON, String::from(";")) 
+                    let token = Token::new(TokenType::SEMICOLON, String::from(";"), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 ',' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::COMMA, String::from(",")) 
+                    let token = Token::new(TokenType::COMMA, String::from(","), self.current_line, self.current_column); 
+                    self.consume_char();
+                    token
                 }
                 ':' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::COLON, String::from(":")) 
+                    let token = Token::new(TokenType::COLON, String::from(":"), self.current_line, self.current_column); 
+                    self.consume_char();
+                    token
                 }
                 '(' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::LPARENTHESE, String::from("(")) 
+                    let token = Token::new(TokenType::LPARENTHESE, String::from("("), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 ')' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::RPARENTHESE, String::from(")")) 
+                    let token = Token::new(TokenType::RPARENTHESE, String::from(")"), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 '[' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::LBRACK, String::from("[")) 
+                    let token = Token::new(TokenType::LBRACK, String::from("["), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 ']' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::RBRACK, String::from("]")) 
+                    let token = Token::new(TokenType::RBRACK, String::from("]"), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 '{' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::LBRACE, String::from("{")) 
+                    let token = Token::new(TokenType::LBRACE, String::from("{"), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 '}' => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::RBRACE, String::from("}")) 
+                    let token = Token::new(TokenType::RBRACE, String::from("}"), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
                 _ => {
-                    self.code_iterator.next();
-                    Token::new(TokenType::UNKNOWN, String::from("UNK"))
+                    let token = Token::new(TokenType::UNKNOWN, String::from("UNK"), self.current_line, self.current_column);
+                    self.consume_char();
+                    token
                 }
             };
 
             result
+        }
+
+        fn consume_char(&mut self) {
+            self.code_iterator.next();
+            self.current_column += 1;
+        }
+
+        fn update_iterator_position_by_witespaces(&mut self, whitespace: &char) {
+            if *whitespace == ' ' {
+                self.current_column += 1;
+            } else if *whitespace == '\t' {
+                self.current_column += TAB_WIDTH;
+            } else if *whitespace == '\n' {
+                self.current_line += 1;
+                self.current_column = 1;
+            } else if *whitespace == '\r' {
+                self.current_column = 1;
+            }
+
         }
 
     }
@@ -289,6 +337,12 @@ mod lexer {
 
         fn assert_token_equal_match(lexer: &mut Lexer, text: &str, token_type: TokenType, expected_result: bool){
             assert_eq!(lexer.match_token(token_type, text), expected_result);
+        }
+
+        fn assert_token_equal_current_position(lexer: &mut Lexer, line: u64, column: u64){
+            let token = lexer.peek_token();
+            assert_eq!(token.line, line);
+            assert_eq!(token.column, column);
         }
 
         #[test]
@@ -603,6 +657,23 @@ mod lexer {
             assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
             assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
         }
+
+        #[test]
+        fn test_current_position_code_with_one_line() {
+            let code = r"let a: int = 10;";
+            let mut lexer: Lexer = Lexer::new(&code);
+
+            assert_token_equal_current_position(&mut lexer, 1, 1);
+            // assert_token_equal_current_position(&mut lexer, 1, 5);
+            // assert_token_equal_current_position(&mut lexer, 1, 6);
+            // assert_token_equal_current_position(&mut lexer, 1, 8);
+            // assert_token_equal_current_position(&mut lexer, 1, 12);
+            // assert_token_equal_current_position(&mut lexer, 1, 14);
+            // assert_token_equal_current_position(&mut lexer, 1, 16);
+            // assert_token_equal_current_position(&mut lexer, 0, 0);
+            // assert_token_equal_current_position(&mut lexer, 0, 0);
+        }
+
     }
 }
 
