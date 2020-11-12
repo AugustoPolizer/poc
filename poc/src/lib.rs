@@ -132,6 +132,7 @@ mod lexer {
                     };
                 }
             }
+            
             // Parsing tokens that need a lookahead equal to 2
             let mut parsing_tokens_ll2 = | second_possible_char: char, first_token_type: TokenType, second_token_type: TokenType| -> Token {
                 let mut buffer = String::new();
@@ -664,14 +665,14 @@ mod lexer {
             let mut lexer: Lexer = Lexer::new(&code);
 
             assert_token_equal_current_position(&mut lexer, 1, 1);
-            // assert_token_equal_current_position(&mut lexer, 1, 5);
-            // assert_token_equal_current_position(&mut lexer, 1, 6);
-            // assert_token_equal_current_position(&mut lexer, 1, 8);
-            // assert_token_equal_current_position(&mut lexer, 1, 12);
-            // assert_token_equal_current_position(&mut lexer, 1, 14);
-            // assert_token_equal_current_position(&mut lexer, 1, 16);
-            // assert_token_equal_current_position(&mut lexer, 0, 0);
-            // assert_token_equal_current_position(&mut lexer, 0, 0);
+            assert_token_equal_current_position(&mut lexer, 1, 5);
+            assert_token_equal_current_position(&mut lexer, 1, 6);
+            assert_token_equal_current_position(&mut lexer, 1, 8);
+            assert_token_equal_current_position(&mut lexer, 1, 12);
+            assert_token_equal_current_position(&mut lexer, 1, 14);
+            assert_token_equal_current_position(&mut lexer, 1, 16);
+            assert_token_equal_current_position(&mut lexer, 0, 0);
+            assert_token_equal_current_position(&mut lexer, 0, 0);
         }
 
     }
