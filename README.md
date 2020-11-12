@@ -59,7 +59,7 @@ function fatorial(n : int) -> int {
 
 # TODO List
 
-- Inserir mais informações nos tokens (Ex: linha e coluna).
+- Inserir mais informações nos tokens (Ex: linha e coluna). (DONE)
 - Melhorar o tratamento de erros.
 - Remover códigos repetidos onde for possível e procurar oportunidades de
   refatoração.
