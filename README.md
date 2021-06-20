@@ -15,8 +15,7 @@ if, else, return, function, let e const
 ## Comandos
 - STATEMENT: FUNCTION | VARIABLE | CMD 
 - CMD: IF | ELSE | FUNCCALL | RETURN  | ATTRIBUITION
-- IF: 'if' '(' EXPRESSION ')' '{' (STATEMENT)* '}' 
-- ELSE: 'else' '{' (STATEMENT)* '}' 
+- IF: 'if' '(' EXPRESSION ')' '{' (STATEMENT)* '}' (ELSE: 'else' '{' (STATEMENT)* '}')?
 - RETURN: 'return' EXPRESSION ';'
 - FUNCCALL: NAME '(' PARAMS? ')' ';'
 - VARIABLE: ('const' | 'let') NAME ':' ( SCALAR | ARRAY) ';'
