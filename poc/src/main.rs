@@ -1,14 +1,14 @@
+use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 use std::{env, fs};
-use log::{Record, Level, Metadata, SetLoggerError, LevelFilter};
 
 struct CompilerLooger;
 
 impl log::Log for CompilerLooger {
-    fn enabled(&self, metadata: &Metadata) -> bool{
+    fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= Level::Info
     }
 
-    fn log(&self, record: &Record){
+    fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             println!("{} - {}", record.level(), record.args());
         }
@@ -20,12 +20,10 @@ impl log::Log for CompilerLooger {
 static LOGGER: CompilerLooger = CompilerLooger;
 
 fn init() -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Info))
+    log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info))
 }
 
 fn main() {
-
     match init() {
         Ok(_) => (),
         Err(e) => {

@@ -1,12 +1,12 @@
-const TAB_WIDTH: u64 = 8;
+const TAB_WIDTH: u32 = 8;
 
 pub struct Lexer<'a> {
     code_iterator: std::iter::Peekable<std::str::Chars<'a>>,
     keywords: std::collections::HashSet<&'static str>,
     types: std::collections::HashSet<&'static str>,
     peeked_tokens: std::collections::VecDeque<Token>,
-    current_line: u64,
-    current_column: u64
+    current_line: u32,
+    current_column: u32
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -38,12 +38,12 @@ pub enum TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub text: String,
-    line: u64,
-    column: u64
+    line: u32,
+    column: u32
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, text: String, line: u64, column: u64) -> Token {
+    pub fn new(token_type: TokenType, text: String, line: u32, column: u32) -> Token {
         Token { token_type, text , line, column}
     }
 }
@@ -85,6 +85,9 @@ impl<'a> Lexer<'a> {
         match self.peeked_tokens.front() {
             Some(token) => {
                 if token.token_type == token_type {
+                    if token_text_options.is_empty() {
+                        return (true, token.text);
+                    }
                     for text in token_text_options {
                         if text == token.text {
                             self.consume_token();
@@ -99,6 +102,9 @@ impl<'a> Lexer<'a> {
             None => {
                 let token = self.peek_token();
                 if token.token_type == token_type {
+                    if token_text_options.is_empty() {
+                        return (true, token.text); 
+                    }
                     for text in token_text_options {
                         if text == token.text {
                             self.consume_token();
@@ -572,7 +578,7 @@ mod tests {
         assert_token_equal_match(&mut lexer, vec!["let"], TokenType::KEYWORD, (true, "let"));    
         assert_token_equal_match(&mut lexer, vec!["let", "const", "int"], TokenType::KEYWORD, (false, ""));    
         assert_token_equal_match(&mut lexer, vec!["test"], TokenType::NAME, (false, ""));    
-        assert_token_equal_match(&mut lexer, vec!["a"], TokenType::NAME, (true, "a"));    
+        assert_token_equal_match(&mut lexer, vec![], TokenType::NAME, (true, "a"));    
         assert_token_equal_match(&mut lexer, vec![";", ":"], TokenType::COLON, (true, ":"));    
         assert_token_equal_match(&mut lexer, vec!["int", "float"], TokenType::TYPE, (true, "int"));    
         assert_token_equal_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));    
