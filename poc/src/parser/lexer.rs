@@ -66,7 +66,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn consume_token(&mut self) -> Token {
+    fn consume_token(&mut self) -> Token {
         let token = match self.peeked_tokens.pop_front() {
             Some(t) => t,
             None => self.get_token()
@@ -74,34 +74,40 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    pub fn clean_token_buffer(&mut self) {
-        self.peeked_tokens.clear();
-    }
-
-    pub fn peek_token(&mut self) -> Token {
+    fn peek_token(&mut self) -> Token {
         let token = self.get_token();
         self.peeked_tokens.push_back(token.clone());
 
         token
     }
 
-    pub fn match_token(&mut self, token_type: TokenType, token_text: &str) -> bool {
+    pub fn match_token(&mut self, token_type: TokenType, token_text_options: Vec<&str>) -> (bool, String) {
         match self.peeked_tokens.front() {
             Some(token) => {
-                if token.token_type == token_type && token.text == token_text {
-                    self.consume_token();
-                    return true;
+                if token.token_type == token_type {
+                    for text in token_text_options {
+                        if text == token.text {
+                            self.consume_token();
+                            return (true, token.text);
+                        }
+                    }
+                    return (false, String::new());
                 } else {
-                    return false;
+                    return (false, String::new());
                 }
             },
             None => {
                 let token = self.peek_token();
-                if token.token_type == token_type && token.text == token_text {
-                    self.consume_token();
-                    return true;
+                if token.token_type == token_type {
+                    for text in token_text_options {
+                        if text == token.text {
+                            self.consume_token();
+                            return (true, token.text);
+                        }
+                    }
+                    return (false, String::new());
                 } else {
-                    return false;
+                    return (false, String::new());
                 }
             }
         };
@@ -337,7 +343,7 @@ mod tests {
         assert_eq!(token.token_type, token_type);
     }
 
-    fn assert_token_equal_match(lexer: &mut Lexer, text: &str, token_type: TokenType, expected_result: bool){
+    fn assert_token_equal_match(lexer: &mut Lexer, text: Vec<&str>, token_type: TokenType, expected_result: (bool, &str)){
         assert_eq!(lexer.match_token(token_type, text), expected_result);
     }
 
@@ -563,59 +569,18 @@ mod tests {
             let a: int = 10; 
         ";
         let mut lexer: Lexer = Lexer::new(&code);
-        assert_token_equal_match(&mut lexer, "let", TokenType::KEYWORD, true);    
-        assert_token_equal_match(&mut lexer, "let", TokenType::KEYWORD, false);    
-        assert_token_equal_match(&mut lexer, "test", TokenType::NAME, false);    
-        assert_token_equal_match(&mut lexer, "a", TokenType::NAME, true);    
-        assert_token_equal_match(&mut lexer, ":", TokenType::COLON, true);    
-        assert_token_equal_match(&mut lexer, "int", TokenType::TYPE, true);    
-        assert_token_equal_match(&mut lexer, "=", TokenType::ATTR, true);    
-        assert_token_equal_match(&mut lexer, "10", TokenType::INTEGER, true);    
-        assert_token_equal_match(&mut lexer, ";", TokenType::SEMICOLON, true);    
-        assert_token_equal_match(&mut lexer, "EOF", TokenType::EOF, true);    
+        assert_token_equal_match(&mut lexer, vec!["let"], TokenType::KEYWORD, (true, "let"));    
+        assert_token_equal_match(&mut lexer, vec!["let", "const", "int"], TokenType::KEYWORD, (false, ""));    
+        assert_token_equal_match(&mut lexer, vec!["test"], TokenType::NAME, (false, ""));    
+        assert_token_equal_match(&mut lexer, vec!["a"], TokenType::NAME, (true, "a"));    
+        assert_token_equal_match(&mut lexer, vec![";", ":"], TokenType::COLON, (true, ":"));    
+        assert_token_equal_match(&mut lexer, vec!["int", "float"], TokenType::TYPE, (true, "int"));    
+        assert_token_equal_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));    
+        assert_token_equal_match(&mut lexer, vec!["10"], TokenType::INTEGER, (true, "10"));    
+        assert_token_equal_match(&mut lexer, vec![";"], TokenType::SEMICOLON, (true, ";"));    
+        assert_token_equal_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, ""));    
     }
 
-    #[test]
-    fn match_token_with_peek() {
-        let code = r"
-            let a: int = 10; 
-        ";
-        let mut lexer: Lexer = Lexer::new(&code);
-        lexer.peek_token();
-        lexer.peek_token();
-        lexer.peek_token();
-        lexer.peek_token();
-        lexer.peek_token();
-        assert_token_equal_match(&mut lexer, "let", TokenType::KEYWORD, true);    
-        assert_token_equal_match(&mut lexer, "a", TokenType::NAME, true);    
-        assert_token_equal_match(&mut lexer, ":", TokenType::COLON, true);    
-        assert_token_equal_match(&mut lexer, "int", TokenType::TYPE, true);    
-        assert_token_equal_match(&mut lexer, "=", TokenType::ATTR, true);    
-        assert_token_equal_match(&mut lexer, "10", TokenType::INTEGER, true);    
-        assert_token_equal_match(&mut lexer, ";", TokenType::SEMICOLON, true);    
-        assert_token_equal_match(&mut lexer, "EOF", TokenType::EOF, true);    
-    }
-
-    #[test]
-    fn match_token_with_peek_and_consume() {
-        let code = r"
-            let a: int = 10; 
-        ";
-        let mut lexer: Lexer = Lexer::new(&code);
-        lexer.peek_token();
-        lexer.peek_token();
-        lexer.peek_token();
-        lexer.peek_token();
-        lexer.peek_token();
-        lexer.consume_token();
-        assert_token_equal_match(&mut lexer, "a", TokenType::NAME, true);    
-        lexer.consume_token();
-        assert_token_equal_match(&mut lexer, "int", TokenType::TYPE, true);    
-        assert_token_equal_match(&mut lexer, "=", TokenType::ATTR, true);    
-        assert_token_equal_match(&mut lexer, "10", TokenType::INTEGER, true);    
-        assert_token_equal_match(&mut lexer, ";", TokenType::SEMICOLON, true);    
-        assert_token_equal_match(&mut lexer, "EOF", TokenType::EOF, true);    
-    }
 
     #[test]
     fn consume() {
