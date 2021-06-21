@@ -38,8 +38,8 @@ pub enum TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub text: String,
-    line: u32,
-    column: u32
+    pub line: u32,
+    pub column: u32
 }
 
 impl Token {
@@ -81,39 +81,43 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    pub fn match_token(&mut self, token_type: TokenType, token_text_options: Vec<&str>) -> (bool, String) {
+    pub fn match_token(&mut self, token_type: TokenType, token_text_options: Vec<&str>) -> (bool, Token) {
         match self.peeked_tokens.front() {
             Some(token) => {
-                if token.token_type == token_type {
+                let token_clone = token.clone();
+                if token_clone.token_type == token_type {
                     if token_text_options.is_empty() {
-                        return (true, token.text);
+                        self.consume_token();
+                        return (true, token_clone);
                     }
                     for text in token_text_options {
-                        if text == token.text {
+                        if text == token_clone.text {
                             self.consume_token();
-                            return (true, token.text);
+                            return (true, token_clone);
                         }
                     }
-                    return (false, String::new());
+                    return (false, Token::new(TokenType::UNKNOWN, String::from(""),0,0));
                 } else {
-                    return (false, String::new());
+                    return (false, Token::new(TokenType::UNKNOWN, String::from(""), 0, 0));
                 }
             },
             None => {
                 let token = self.peek_token();
                 if token.token_type == token_type {
+                    let token_clone = token.clone();
                     if token_text_options.is_empty() {
-                        return (true, token.text); 
+                        self.consume_token();
+                        return (true, token_clone); 
                     }
                     for text in token_text_options {
-                        if text == token.text {
+                        if text == token_clone.text {
                             self.consume_token();
-                            return (true, token.text);
+                            return (true, token_clone);
                         }
                     }
-                    return (false, String::new());
+                    return (false, Token::new(TokenType::EOF, String::from(""),0,0));
                 } else {
-                    return (false, String::new());
+                    return (false, Token::new(TokenType::EOF, String::from(""),0,0));
                 }
             }
         };
@@ -349,11 +353,13 @@ mod tests {
         assert_eq!(token.token_type, token_type);
     }
 
-    fn assert_token_equal_match(lexer: &mut Lexer, text: Vec<&str>, token_type: TokenType, expected_result: (bool, &str)){
-        assert_eq!(lexer.match_token(token_type, text), expected_result);
+    fn assert_token_equal_match(lexer: &mut Lexer, options: Vec<&str>, token_type: TokenType, expected_result: (bool, &str)){
+        let match_result = lexer.match_token(token_type, options);
+        assert_eq!(match_result.0, expected_result.0);
+        assert_eq!(match_result.1.text, expected_result.1);
     }
 
-    fn assert_token_equal_current_position(lexer: &mut Lexer, line: u64, column: u64){
+    fn assert_token_equal_current_position(lexer: &mut Lexer, line: u32, column: u32){
         let token = lexer.peek_token();
         assert_eq!(token.line, line);
         assert_eq!(token.column, column);
@@ -584,7 +590,7 @@ mod tests {
         assert_token_equal_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));    
         assert_token_equal_match(&mut lexer, vec!["10"], TokenType::INTEGER, (true, "10"));    
         assert_token_equal_match(&mut lexer, vec![";"], TokenType::SEMICOLON, (true, ";"));    
-        assert_token_equal_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, ""));    
+        assert_token_equal_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, "EOF"));    
     }
 
 
@@ -690,4 +696,6 @@ function attributionTest() {
         assert_token_equal_current_position(&mut lexer, 0, 0);
     }
 }
+
+
 

@@ -1,6 +1,9 @@
 mod lexer;
-mod error_msgs;
+mod errors;
 mod scope_manager;
+
+use errors::error_msgs::{wrong_token_error_msg_handle};
+use errors::{UnexpectedTokenError};
 
 enum Expression {
     Binary(BinaryExpr),
@@ -98,6 +101,11 @@ fn match_token_text(comp_vec: Vec<&str>, token_text: &str) -> bool {
     } 
     false
 }
+// Used only as return type of function find_name_in_current_scope 
+enum ScopeTypes {
+    Symbol(scope_manager::Symbol),
+    FuncDecl(scope_manager::FuncDecl)
+}
 
 struct Parser<'a>{
     lexer: lexer::Lexer<'a>,
@@ -120,94 +128,100 @@ impl<'a> Parser<'a> {
     }
 
      // Expression parsing functions
-    fn expression(&mut self) -> Expression {
+    fn expression(&mut self) -> Result<Expression, UnexpectedTokenError> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Expression {
-        let mut expr: Expression = self.comparison();
+    fn equality(&mut self) -> Result<Expression, UnexpectedTokenError> {
+        let mut expr: Expression = self.comparison()?;
         
         let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["==", "!="]);
         while match_result.0 {
-            let right = self.comparison();
-            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1));
+            let right = self.comparison()?;
+            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
             match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["==", "!="]);
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn comparison(&mut self) -> Expression {
-        let mut expr = self.term();
+    fn comparison(&mut self) -> Result<Expression, UnexpectedTokenError>{
+        let mut expr = self.term()?;
 
         let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec![">", ">=", "<", "<="]);
         while match_result.0 {
-            let right = self.term();
-            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1));
+            let right = self.term()?;
+            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
             match_result = self.lexer.match_token(lexer::TokenType::OP, vec![">", ">=", "<", "<="])
         } 
 
-        expr
+        Ok(expr)
     }
 
-    fn term(&mut self) -> Expression {
-        let mut expr = self.factor();
+    fn term(&mut self) -> Result<Expression, UnexpectedTokenError> {
+        let mut expr = self.factor()?;
 
         let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["+","-"]);
         while match_result.0 {
-            let right = self.factor();
-            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1));
+            let right = self.factor()?;
+            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
             match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["+","-"]);
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn factor(&mut self) -> Expression {
-        let mut expr = self.unary();
+    fn factor(&mut self) -> Result<Expression, UnexpectedTokenError> {
+        let mut expr = self.unary()?;
 
         let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["*","/"]);
         while match_result.0 {
-            let right = self.unary();
-            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1));
-            let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["*","/"]);
+            let right = self.unary()?;
+            expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
+            match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["*","/"]);
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn unary(&mut self) -> Expression {
-        let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["!","-"]);
+    fn unary(&mut self) -> Result<Expression, UnexpectedTokenError> {
+        let match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["!","-"]);
         if match_result.0 {
-            let right = self.unary();
-            return Expression::Unary(UnaryExpr::new(right, match_result.1));
+            let right = self.unary()?;
+            return Ok(Expression::Unary(UnaryExpr::new(right, match_result.1.text)));
         }
 
         self.primary()
 
     }
 
-    fn primary(&mut self) -> Result<Expression,  {
+    fn primary(&mut self) -> Result<Expression, UnexpectedTokenError>  {
         let mut match_result = self.lexer.match_token(lexer::TokenType::INTEGER, vec![]);
         if match_result.0 {
-            return Expression::Literal(LiteralExpr::new(match_result.1));
+            return Ok(Expression::Literal(LiteralExpr::new(match_result.1.text)));
         }
         match_result = self.lexer.match_token(lexer::TokenType::FLOAT, vec![]);
         if match_result.0 {
-            return Expression::Literal(LiteralExpr::new(match_result.1));
+            return Ok(Expression::Literal(LiteralExpr::new(match_result.1.text)));
         }
         match_result = self.lexer.match_token(lexer::TokenType::STRING, vec![]);
         if match_result.0 {
-            return Expression::Literal(LiteralExpr::new(match_result.1));
+            return Ok(Expression::Literal(LiteralExpr::new(match_result.1.text)));
         }
 
         match_result = self.lexer.match_token(lexer::TokenType::LPARENTHESE, vec!["("]);
         if match_result.0 {
-            let expr = self.expression();
+            let expr = self.expression()?;
             match_result = self.lexer.match_token(lexer::TokenType::RPARENTHESE, vec![")"]);
-            return Expression::Grouping(GroupingExpr::new(expr));
+            if !match_result.0 {
+                return Err(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                        errors::error_msgs::UnexpectedTokenError::RPARENTHESE, &match_result.1.text),match_result.1.line, match_result.1.column));
+            }
+            return Ok(Expression::Grouping(GroupingExpr::new(expr)));
         } else {
-            return Err
+            return Err(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &match_result.1.text), 
+                    match_result.1.line, match_result.1.column));
         }
 
 
