@@ -8,9 +8,14 @@ pub mod error_msgs{
         SEMICOLON,
         LPARENTHESE,
         RPARENTHESE,
+        LBRACE,
         COMMAORRPARENTHESE,
         UNEXPECTEDKEYWORD,
         UNEXPECTEDTOKEN
+    }
+
+    pub enum MissingTokenError {
+        RBRACE
     }
 
     pub enum ScopeError {
@@ -33,6 +38,7 @@ pub mod error_msgs{
             UnexpectedTokenError::SEMICOLON => format!("Expected a \";\", found \"{}\"", wrong_token),
             UnexpectedTokenError::LPARENTHESE => format!("Expected a \"(\", found \"{}\"", wrong_token),
             UnexpectedTokenError::RPARENTHESE => format!("Expected a \")\", found \"{}\"", wrong_token),
+            UnexpectedTokenError::LBRACE => format!("Expected a \"{{\", found \"{}\"", wrong_token),
             UnexpectedTokenError::COMMAORRPARENTHESE => format!("Expected a \",\" or a \")\", found \"{}\"", wrong_token),
             UnexpectedTokenError::UNEXPECTEDKEYWORD => format!("Unexpected keyword found: \"{}\"", wrong_token),
             UnexpectedTokenError::UNEXPECTEDTOKEN => format!("Unexpected token found: \"{}\"", wrong_token)
@@ -49,6 +55,12 @@ pub mod error_msgs{
         match error_type {
             InternalError::UNABLETOINSERTSYMBOL => format!("Internal error: Unable to insert symbol into scope: {}", error),
             InternalError::UNABLETOCREATESYMBOL => format!("Internal error: Unable to create symbol: {}", error),
+        }
+    }
+
+    pub fn missing_token_error_msg_handle(error_type: MissingTokenError) -> String{
+        match error_type {
+            MissingTokenError::RBRACE => String::from("Sudden end of input. Missing a closing \"}\""),
         }
     }
 
@@ -106,6 +118,12 @@ pub mod error_msgs{
         }
 
         #[test]
+        fn lbrace_error_msg() {
+            let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::LBRACE, "var_name");
+            assert_eq!(error_msg, "Expected a \"{\", found \"var_name\"")
+        }
+
+        #[test]
         fn comma_or_rparenthese_error_msg() {
             let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::COMMAORRPARENTHESE, "var_name");
             assert_eq!(error_msg, "Expected a \",\" or a \")\", found \"var_name\"")
@@ -121,6 +139,13 @@ pub mod error_msgs{
         fn unexpected_keyword() {
             let error_msg = wrong_token_error_msg_handle(UnexpectedTokenError::UNEXPECTEDKEYWORD, "keyword");
             assert_eq!(error_msg, "Unexpected keyword found: \"keyword\"");
+        }
+
+        // MissingToken 
+        #[test]
+        fn missing_token_r_brace_error_msg() {
+            let error_msg = missing_token_error_msg_handle(MissingTokenError::RBRACE);
+            assert_eq!(error_msg, "Sudden end of input. Missing a closing \"}\"")
         }
 
         // ScopeError
@@ -148,6 +173,7 @@ pub mod error_msgs{
                 );
             assert_eq!(error_msg, "Internal error: Unable to create symbol: Unknown type \"u32\"");
         }
+        
     }
 }
 
@@ -156,6 +182,7 @@ use std::fmt;
 pub enum ParsingError{
     UnexpectedToken(UnexpectedTokenError),
     ScopeResolution(ScopeResolutionError),
+    MissingToken(MissingTokenError),
     Internal(InternalError)
 }
 
@@ -168,6 +195,12 @@ impl From<UnexpectedTokenError> for ParsingError {
 impl From<ScopeResolutionError> for ParsingError {
     fn from(error: ScopeResolutionError) -> Self {
         ParsingError::ScopeResolution(error)
+    }
+}
+
+impl From<MissingTokenError> for ParsingError {
+    fn from(error: MissingTokenError) -> Self {
+        ParsingError::MissingToken(error)
     }
 }
 
@@ -199,6 +232,25 @@ impl UnexpectedTokenError {
         }
     }
 } 
+
+#[derive(Debug, Clone)]
+pub struct MissingTokenError {
+    error_msg: String
+}
+
+impl fmt::Display for MissingTokenError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "InternalError: {}", self.error_msg)
+    }
+}
+
+impl MissingTokenError {
+    pub fn new(error_msg: String) -> MissingTokenError {
+        MissingTokenError {
+            error_msg
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct InternalError {
