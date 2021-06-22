@@ -82,6 +82,7 @@ enum Statement {
     FuncCall(FuncCallStmt),
     Return(ReturnStmt),
     VarDecl(VarDeclStmt),
+    Attr(AttrStmt)
 }
 
 struct IfStmt {
@@ -137,6 +138,19 @@ impl VarDeclStmt {
     }
 }
 
+struct AttrStmt{
+    name: String,
+    expr: Expression
+}
+
+impl AttrStmt {
+    pub fn new(name: String, expr: Expression) -> AttrStmt {
+        AttrStmt {
+            name,
+            expr
+        }
+    }
+}
 
 // Used only as return type of function find_name_in_current_scope 
 enum ScopeTypes {
@@ -197,9 +211,9 @@ impl<'a> Parser<'a> {
             _ => {
                 match_result = self.lexer.try_to_match_token(lexer::TokenType::NAME, vec![]); 
                 if match_result.0 {
-                    match_result = self.lexer.try_to_match_token(lexer::TokenType::ATTR, vec!["="]);
-                    if match_result.0 {
-                        return self.attr_stmt();
+                    let check_attr = self.lexer.try_to_match_token(lexer::TokenType::ATTR, vec!["="]);
+                    if check_attr.0 {
+                        return self.attr_stmt(match_result.1.text);
                     }
                     match_result = self.lexer.try_to_match_token(lexer::TokenType::LPARENTHESE, vec!["("]);
                     if match_result.0 {
@@ -330,7 +344,16 @@ impl<'a> Parser<'a> {
     fn func_decl(&mut self) -> Result<Statement, ParsingError> {
     }
 
-    fn attr_stmt(&mut self) -> Result<Statement, ParsingError> {
+    fn attr_stmt(&mut self,var_name: String) -> Result<Statement, ParsingError> {
+        let expr = self.expression()?;
+        
+        if let Err(err) = self.lexer.match_token(lexer::TokenType::SEMICOLON, ";") {
+           return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                errors::error_msgs::UnexpectedTokenError::SEMICOLON, &err.text),
+                err.line, err.column)));
+        }
+        
+        Ok(Statement::Attr(AttrStmt::new(var_name, expr)))
     }
 
     fn func_call(&mut self) -> Result<Statement, ParsingError> {
