@@ -85,7 +85,7 @@ struct IfStmt {
 }
 
 impl IfStmt {
-    pub fn new(if_stmts: Vec<Statement>, else_stmts: Vec<Statement>, expr: Expression) -> Self {
+    pub fn new(if_stmts: Vec<Statement>, else_stmts: Vec<Statement>, expr: Expression) -> IfStmt {
         IfStmt {
             if_stmts,
             else_stmts,
@@ -106,7 +106,15 @@ struct FuncCallStmt {
 }
 
 struct ReturnStmt {
-    return_value: Expression
+    expr: Expression
+}
+
+impl ReturnStmt {
+    pub fn new(expr: Expression) -> ReturnStmt {
+        ReturnStmt {
+            expr
+        }
+    }
 }
 
 struct VarDecl {
@@ -156,6 +164,7 @@ impl<'a> Parser<'a> {
         Err(errors)
     }
 
+    // Cosume tokens until find a statement delimiter  
     fn sync(&mut self){
         // Panic mode
 
@@ -242,6 +251,15 @@ impl<'a> Parser<'a> {
     }
 
     fn return_stmt(&mut self) -> Result<Statement, ParsingError> {
+        let expr = self.expression()?;
+
+        if let Err(err) = self.lexer.match_token(lexer::TokenType::SEMICOLON, ";") {
+            return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                        errors::error_msgs::UnexpectedTokenError::SEMICOLON, &err.text),
+                        err.line, err.column)));
+        }
+
+        Ok(Statement::Return(ReturnStmt::new(expr)))
     }
 
     fn var_decl(&mut self) -> Result<Statement, ParsingError> {
