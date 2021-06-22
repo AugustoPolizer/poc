@@ -4,9 +4,16 @@ mod scope_manager;
 
 use errors::error_msgs::{
     wrong_token_error_msg_handle, 
-    missing_token_error_msg_handle
+    missing_token_error_msg_handle,
+    scope_error_msg_handle
 };
-use errors::{UnexpectedTokenError, ParsingError, MissingTokenError};
+
+use errors::{
+    ParsingError,
+    UnexpectedTokenError,
+    MissingTokenError, 
+    ScopeResolutionError
+};
 
 enum Expression {
     Binary(BinaryExpr),
@@ -14,7 +21,6 @@ enum Expression {
     Literal(LiteralExpr),
     Grouping(GroupingExpr)
 }
-
 
 struct BinaryExpr {
     right: Box<Expression>,
@@ -75,7 +81,7 @@ enum Statement {
     FuncDecl(FuncDeclStmt),
     FuncCall(FuncCallStmt),
     Return(ReturnStmt),
-    VarDecl(VarDecl),
+    VarDecl(VarDeclStmt),
 }
 
 struct IfStmt {
@@ -117,9 +123,18 @@ impl ReturnStmt {
     }
 }
 
-struct VarDecl {
-    var_name: String,
-    var_value: Option<Expression>
+struct VarDeclStmt{
+    name: String,
+    expr: Option<Expression>
+}
+
+impl VarDeclStmt {
+    pub fn new(name: String, expr: Option<Expression>) -> VarDeclStmt {
+        VarDeclStmt {
+            name,
+            expr
+        }
+    }
 }
 
 
@@ -176,7 +191,8 @@ impl<'a> Parser<'a> {
         return match match_result.1.text.as_str() {
             "if" => self.if_stmt(),
             "return" => self.return_stmt(),
-            "let"|"const" => self.var_decl(),
+            "let" => self.var_decl(false),
+            "const" => self.var_decl(true),
             "function" =>  self.func_decl(),
             _ => {
                 match_result = self.lexer.try_to_match_token(lexer::TokenType::NAME, vec![]); 
@@ -262,8 +278,53 @@ impl<'a> Parser<'a> {
         Ok(Statement::Return(ReturnStmt::new(expr)))
     }
 
-    fn var_decl(&mut self) -> Result<Statement, ParsingError> {
+    fn var_decl(&mut self, is_const: bool) -> Result<Statement, ParsingError> {
+       match self.lexer.match_token(lexer::TokenType::NAME, "") {
+           Ok(token) => {
+               if self.name_exist_in_current_scope(&token.text) {
+                   return Err(ParsingError::ScopeResolution(ScopeResolutionError::new(scope_error_msg_handle(
+                                   errors::error_msgs::ScopeError::ALREADYDECLARED, &token.text),
+                                   token.line, token.column)));
+               }
 
+               if let Err(err) = self.lexer.match_token(lexer::TokenType::COLON, ":") { 
+                   return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                        errors::error_msgs::UnexpectedTokenError::COLON, &err.text),
+                        err.line, err.column)));
+                   
+               }
+                
+               match self.lexer.match_token(lexer::TokenType::TYPE, "") {
+                   Ok(token_type) => {
+                        self.scopes.insert_symbol(scope_manager::Symbol::new_by_string(&token_type.text, is_const), token.text);
+                        // var optional initialization
+                        let mut expr = None;
+                        if self.lexer.try_to_match_token(lexer::TokenType::ATTR, vec!["="]).0 {
+                            expr = Some(self.expression()?);
+                        }
+
+                        if let Err(err) = self.lexer.match_token(lexer::TokenType::SEMICOLON, ";") {
+                           return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                                errors::error_msgs::UnexpectedTokenError::SEMICOLON, &err.text),
+                                err.line, err.column)));
+                        }
+                        Ok(Statement::VarDecl(VarDeclStmt::new(token.text, expr)))
+                   },
+                   Err(err) => {
+                       return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                            errors::error_msgs::UnexpectedTokenError::TYPE, &err.text),
+                            err.line, err.column)));
+                   }
+               }
+
+
+           },
+           Err(err) => { 
+               return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                    errors::error_msgs::UnexpectedTokenError::VARNAME, &err.text),
+                    err.line, err.column)));
+           }
+       }
     }
 
     fn func_decl(&mut self) -> Result<Statement, ParsingError> {
@@ -375,14 +436,14 @@ impl<'a> Parser<'a> {
 
     }
 
-    fn find_name_in_current_scope(& self, name: &str) ->  Option<ScopeTypes> {
-        if let Some(symbol) = self.scopes.find_symbol_in_current_scope(name){
-            return Some(ScopeTypes::Symbol(symbol.clone()));
+    fn name_exist_in_current_scope(& self, name: &str) -> bool {
+        if let Some(_) = self.scopes.find_symbol_in_current_scope(name){
+            return true;
         } else {
             if let Some(func_decl) = self.scopes.find_func_decl_in_current_scope(name) {
-               return Some(ScopeTypes::FuncDecl(func_decl.clone())); 
+               return true; 
             } else {
-                return None
+                return false;
             }
         }
     }
@@ -396,11 +457,7 @@ mod tests {
     fn find_name_in_current_scope_empty_scope() {
         let parser = Parser::new("");
 
-        if let Some(_) = parser.find_name_in_current_scope("var_test"){
-            assert!(false);
-        } else {
-            assert!(true);
-        }
+        assert_eq!(parser.name_exist_in_current_scope("var_test"), false);
     }
 
 }
