@@ -153,6 +153,30 @@ pub mod error_msgs{
 
 use std::fmt;
 
+pub enum ParsingError{
+    UnexpectedToken(UnexpectedTokenError),
+    ScopeResolution(ScopeResolutionError),
+    Internal(InternalError)
+}
+
+impl From<UnexpectedTokenError> for ParsingError {
+    fn from(error: UnexpectedTokenError) -> Self {
+        ParsingError::UnexpectedToken(error)
+    }
+}
+
+impl From<ScopeResolutionError> for ParsingError {
+    fn from(error: ScopeResolutionError) -> Self {
+        ParsingError::ScopeResolution(error)
+    }
+}
+
+impl From<InternalError> for ParsingError {
+    fn from (error: InternalError) -> Self {
+        ParsingError::Internal(error)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UnexpectedTokenError {
     error_msg: String,
@@ -196,21 +220,21 @@ impl InternalError {
 }
 
 #[derive(Debug, Clone)]
-pub struct ScopeError {
+pub struct ScopeResolutionError {
     error_msg: String,
     line: u32,
     column: u32
 }
 
-impl fmt::Display for ScopeError {
+impl fmt::Display for ScopeResolutionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "line:{}: {}", self.line, self.error_msg)
     }
 }
 
-impl ScopeError {
-    pub fn new(error_msg: String, line: u32, column: u32) -> ScopeError {
-        ScopeError {
+impl ScopeResolutionError {
+    pub fn new(error_msg: String, line: u32, column: u32) -> ScopeResolutionError {
+        ScopeResolutionError {
             error_msg,
             line, 
             column

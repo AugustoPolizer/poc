@@ -3,7 +3,7 @@ mod errors;
 mod scope_manager;
 
 use errors::error_msgs::{wrong_token_error_msg_handle};
-use errors::{UnexpectedTokenError};
+use errors::{UnexpectedTokenError, ParsingError};
 
 enum Expression {
     Binary(BinaryExpr),
@@ -67,40 +67,41 @@ impl GroupingExpr {
     }
 }
 
-trait Statement { 
+enum Statement { 
+    If(IfStmt),
+    FuncDecl(FuncDeclStmt),
+    FuncCall(FuncCallStmt),
+    Return(ReturnStmt),
+    VarDecl(VarDecl),
 }
 
-struct If {
-   if_stmts: Vec<Box<dyn Statement>>,
-   else_stmts: Vec<Box<dyn Statement>>,
+struct IfStmt {
+   if_stmts: Vec<Statement>,
+   else_stmts: Vec<Statement>,
    expression: Expression,
 }
 
-struct FunctionDeclaration {
-
+struct FuncDeclStmt {
+    func_name: String,
+    func_params: Vec<String>, 
+    func_body: Vec<Statement>
 }
 
-struct FunctionCall {
-
+struct FuncCallStmt {
+    func_name: String,
+    func_args: Vec<String>
 }
 
-struct Return {
-
+struct ReturnStmt {
+    return_value: Expression
 }
 
-struct Attribution {
-
+struct VarDecl {
+    var_name: String,
+    var_value: Option<Expression>
 }
 
 
-fn match_token_text(comp_vec: Vec<&str>, token_text: &str) -> bool {
-    for text in comp_vec {
-        if text == token_text {
-            return true
-        }
-    } 
-    false
-}
 // Used only as return type of function find_name_in_current_scope 
 enum ScopeTypes {
     Symbol(scope_manager::Symbol),
@@ -121,10 +122,95 @@ impl<'a> Parser<'a> {
        }  
     }
 
-    pub fn parse() -> Vec<Box<dyn Statement>> {
-        let ast = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<Statement>, Vec<ParsingError>> {
+        let mut ast = Vec::new();
+        let mut errors = Vec::new();
 
-        ast
+        while ! self.lexer.try_to_match_token(lexer::TokenType::EOF, vec!["EOF"]).0 {
+            match self.statement() {
+                Ok(stmt) => ast.push(stmt),
+                Err(error) => {
+                    errors.push(error);
+                    self.sync();
+                }
+            }
+        }
+
+        if errors.is_empty() {
+           return Ok(ast);
+        } 
+        Err(errors)
+    }
+
+    fn sync(&mut self){
+        // Panic mode
+
+    }
+
+    fn statement(&mut self) -> Result<Statement, ParsingError> {
+        let mut match_result = self.lexer.try_to_match_token(lexer::TokenType::KEYWORD, vec!["function", "let", "const", "if", "return"]);
+
+        return match match_result.1.text.as_str() {
+            "if" => self.if_stmt(),
+            "return" => self.return_stmt(),
+            "let"|"const" => self.var_decl(),
+            "function" =>  self.func_decl(),
+            _ => {
+                match_result = self.lexer.try_to_match_token(lexer::TokenType::NAME, vec![]); 
+                if match_result.0 {
+                    match_result = self.lexer.try_to_match_token(lexer::TokenType::ATTR, vec!["="]);
+                    if match_result.0 {
+                        return self.attr_stmt();
+                    }
+                    match_result = self.lexer.try_to_match_token(lexer::TokenType::LPARENTHESE, vec!["("]);
+                    if match_result.0 {
+                        return self.func_call();
+                    }
+                } 
+
+                return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                            errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &match_result.1.text),
+                            match_result.1.line, match_result.1.column)));
+            }
+        };
+
+    }
+
+    fn if_stmt(&mut self) -> Result<Statement, ParsingError> {
+        if let Err(err) = self.lexer.match_token(lexer::TokenType::LPARENTHESE, "(") {
+            return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &err.text),
+                        err.line, err.column)));
+        }
+        let expr = self.expression()?;
+        if let Err(err) = self.lexer.match_token(lexer::TokenType::RPARENTHESE, ")") {
+            return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &err.text),
+                        err.line, err.column)));
+        }
+         
+        if let Err(err) = self.lexer.match_token(lexer::TokenType::LBRACE, "{") {
+            return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &err.text),
+                        err.line, err.column)));
+        }
+
+    }
+
+    fn return_stmt(&mut self) -> Result<Statement, ParsingError> {
+    }
+
+    fn var_decl(&mut self) -> Result<Statement, ParsingError> {
+
+    }
+
+    fn func_decl(&mut self) -> Result<Statement, ParsingError> {
+    }
+
+    fn attr_stmt(&mut self) -> Result<Statement, ParsingError> {
+    }
+
+    fn func_call(&mut self) -> Result<Statement, ParsingError> {
     }
 
      // Expression parsing functions
@@ -135,11 +221,11 @@ impl<'a> Parser<'a> {
     fn equality(&mut self) -> Result<Expression, UnexpectedTokenError> {
         let mut expr: Expression = self.comparison()?;
         
-        let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["==", "!="]);
+        let mut match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec!["==", "!="]);
         while match_result.0 {
             let right = self.comparison()?;
             expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
-            match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["==", "!="]);
+            match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec!["==", "!="]);
         }
 
         Ok(expr)
@@ -148,11 +234,11 @@ impl<'a> Parser<'a> {
     fn comparison(&mut self) -> Result<Expression, UnexpectedTokenError>{
         let mut expr = self.term()?;
 
-        let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec![">", ">=", "<", "<="]);
+        let mut match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec![">", ">=", "<", "<="]);
         while match_result.0 {
             let right = self.term()?;
             expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
-            match_result = self.lexer.match_token(lexer::TokenType::OP, vec![">", ">=", "<", "<="])
+            match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec![">", ">=", "<", "<="])
         } 
 
         Ok(expr)
@@ -161,11 +247,11 @@ impl<'a> Parser<'a> {
     fn term(&mut self) -> Result<Expression, UnexpectedTokenError> {
         let mut expr = self.factor()?;
 
-        let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["+","-"]);
+        let mut match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec!["+","-"]);
         while match_result.0 {
             let right = self.factor()?;
             expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
-            match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["+","-"]);
+            match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec!["+","-"]);
         }
 
         Ok(expr)
@@ -174,18 +260,18 @@ impl<'a> Parser<'a> {
     fn factor(&mut self) -> Result<Expression, UnexpectedTokenError> {
         let mut expr = self.unary()?;
 
-        let mut match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["*","/"]);
+        let mut match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec!["*","/"]);
         while match_result.0 {
             let right = self.unary()?;
             expr = Expression::Binary(BinaryExpr::new(right, expr, match_result.1.text));
-            match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["*","/"]);
+            match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec!["*","/"]);
         }
 
         Ok(expr)
     }
 
     fn unary(&mut self) -> Result<Expression, UnexpectedTokenError> {
-        let match_result = self.lexer.match_token(lexer::TokenType::OP, vec!["!","-"]);
+        let match_result = self.lexer.try_to_match_token(lexer::TokenType::OP, vec!["!","-"]);
         if match_result.0 {
             let right = self.unary()?;
             return Ok(Expression::Unary(UnaryExpr::new(right, match_result.1.text)));
@@ -196,23 +282,23 @@ impl<'a> Parser<'a> {
     }
 
     fn primary(&mut self) -> Result<Expression, UnexpectedTokenError>  {
-        let mut match_result = self.lexer.match_token(lexer::TokenType::INTEGER, vec![]);
+        let mut match_result = self.lexer.try_to_match_token(lexer::TokenType::INTEGER, vec![]);
         if match_result.0 {
             return Ok(Expression::Literal(LiteralExpr::new(match_result.1.text)));
         }
-        match_result = self.lexer.match_token(lexer::TokenType::FLOAT, vec![]);
+        match_result = self.lexer.try_to_match_token(lexer::TokenType::FLOAT, vec![]);
         if match_result.0 {
             return Ok(Expression::Literal(LiteralExpr::new(match_result.1.text)));
         }
-        match_result = self.lexer.match_token(lexer::TokenType::STRING, vec![]);
+        match_result = self.lexer.try_to_match_token(lexer::TokenType::STRING, vec![]);
         if match_result.0 {
             return Ok(Expression::Literal(LiteralExpr::new(match_result.1.text)));
         }
 
-        match_result = self.lexer.match_token(lexer::TokenType::LPARENTHESE, vec!["("]);
+        match_result = self.lexer.try_to_match_token(lexer::TokenType::LPARENTHESE, vec!["("]);
         if match_result.0 {
             let expr = self.expression()?;
-            match_result = self.lexer.match_token(lexer::TokenType::RPARENTHESE, vec![")"]);
+            match_result = self.lexer.try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"]);
             if !match_result.0 {
                 return Err(UnexpectedTokenError::new(wrong_token_error_msg_handle(
                         errors::error_msgs::UnexpectedTokenError::RPARENTHESE, &match_result.1.text),match_result.1.line, match_result.1.column));
@@ -255,9 +341,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn match_token_text_test() {
-        assert!(match_token_text(vec!("==", "!="), "=="));
-        assert!(!match_token_text(vec!("==", "!="), "+"));
-    }
 }

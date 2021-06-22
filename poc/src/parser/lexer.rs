@@ -81,7 +81,7 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    pub fn match_token(&mut self, token_type: TokenType, token_text_options: Vec<&str>) -> (bool, Token) {
+    pub fn try_to_match_token(&mut self, token_type: TokenType, token_text_options: Vec<&str>) -> (bool, Token) {
         match self.peeked_tokens.front() {
             Some(token) => {
                 let token_clone = token.clone();
@@ -118,6 +118,44 @@ impl<'a> Lexer<'a> {
                     return (false, Token::new(TokenType::EOF, String::from(""),0,0));
                 } else {
                     return (false, Token::new(TokenType::EOF, String::from(""),0,0));
+                }
+            }
+        };
+
+    }
+
+    pub fn match_token(&mut self, token_type: TokenType, token_text: &str) -> Result<(), Token> {
+
+        match self.peeked_tokens.front() {
+            Some(token) => {
+                if token.token_type == token_type {
+                    if token_text.is_empty(){
+                        self.consume_token();
+                        return Ok(()); 
+                    }
+                    if token.text == token_text {
+                        self.consume_token();
+                        return Ok(()); 
+                    }
+                    return Err(token.clone())
+                } else {
+                    return Err(token.clone())
+                }
+            },
+            None => {
+                let token = self.peek_token();
+                if token.token_type == token_type {
+                    if token_text.is_empty(){
+                        self.consume_token();
+                        return Ok(()); 
+                    }
+                    if token.text == token_text {
+                        self.consume_token();
+                        return Ok(()); 
+                    }
+                    return Err(token.clone())
+                } else {
+                    return Err(token.clone())
                 }
             }
         };
@@ -262,7 +300,7 @@ impl<'a> Lexer<'a> {
             }
             ',' => {
                 let token = Token::new(TokenType::COMMA, String::from(","), self.current_line, self.current_column); 
-                self.consume_char();
+               self.consume_char();
                 token
             }
             ':' => {
@@ -353,10 +391,27 @@ mod tests {
         assert_eq!(token.token_type, token_type);
     }
 
-    fn assert_token_equal_match(lexer: &mut Lexer, options: Vec<&str>, token_type: TokenType, expected_result: (bool, &str)){
-        let match_result = lexer.match_token(token_type, options);
+    fn assert_token_equal_try_match(lexer: &mut Lexer, options: Vec<&str>, token_type: TokenType, expected_result: (bool, &str)){
+        let match_result = lexer.try_to_match_token(token_type, options);
         assert_eq!(match_result.0, expected_result.0);
         assert_eq!(match_result.1.text, expected_result.1);
+    }
+
+    fn assert_token_equal_match(lexer: &mut Lexer, token_text: &str, token_type: TokenType, expected_result: bool) {
+        match lexer.match_token(token_type, token_text) {
+            Ok(_) => {
+                if expected_result {
+                    return assert!(true);
+                }
+                return assert!(false);
+            }
+            Err(_) => {
+                if expected_result {
+                    return assert!(false);
+                }
+                return assert!(true);
+            }
+        }
     }
 
     fn assert_token_equal_current_position(lexer: &mut Lexer, line: u32, column: u32){
@@ -576,23 +631,40 @@ mod tests {
     }
 
     #[test]
+    fn try_to_match_token() {
+        let code = r"
+            let a: int = 10; 
+        ";
+        let mut lexer: Lexer = Lexer::new(&code);
+        assert_token_equal_try_match(&mut lexer, vec!["let"], TokenType::KEYWORD, (true, "let"));    
+        assert_token_equal_try_match(&mut lexer, vec!["let", "const", "int"], TokenType::KEYWORD, (false, ""));    
+        assert_token_equal_try_match(&mut lexer, vec!["test"], TokenType::NAME, (false, ""));    
+        assert_token_equal_try_match(&mut lexer, vec![], TokenType::NAME, (true, "a"));    
+        assert_token_equal_try_match(&mut lexer, vec![";", ":"], TokenType::COLON, (true, ":"));    
+        assert_token_equal_try_match(&mut lexer, vec!["int", "float"], TokenType::TYPE, (true, "int"));    
+        assert_token_equal_try_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));    
+        assert_token_equal_try_match(&mut lexer, vec!["10"], TokenType::INTEGER, (true, "10"));    
+        assert_token_equal_try_match(&mut lexer, vec![";"], TokenType::SEMICOLON, (true, ";"));    
+        assert_token_equal_try_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, "EOF"));    
+    }
+
+    #[test]
     fn match_token() {
         let code = r"
             let a: int = 10; 
         ";
         let mut lexer: Lexer = Lexer::new(&code);
-        assert_token_equal_match(&mut lexer, vec!["let"], TokenType::KEYWORD, (true, "let"));    
-        assert_token_equal_match(&mut lexer, vec!["let", "const", "int"], TokenType::KEYWORD, (false, ""));    
-        assert_token_equal_match(&mut lexer, vec!["test"], TokenType::NAME, (false, ""));    
-        assert_token_equal_match(&mut lexer, vec![], TokenType::NAME, (true, "a"));    
-        assert_token_equal_match(&mut lexer, vec![";", ":"], TokenType::COLON, (true, ":"));    
-        assert_token_equal_match(&mut lexer, vec!["int", "float"], TokenType::TYPE, (true, "int"));    
-        assert_token_equal_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));    
-        assert_token_equal_match(&mut lexer, vec!["10"], TokenType::INTEGER, (true, "10"));    
-        assert_token_equal_match(&mut lexer, vec![";"], TokenType::SEMICOLON, (true, ";"));    
-        assert_token_equal_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, "EOF"));    
+        assert_token_equal_match(&mut lexer, "let", TokenType::KEYWORD, true);    
+        assert_token_equal_match(&mut lexer, "const", TokenType::KEYWORD, false);    
+        assert_token_equal_match(&mut lexer, "test", TokenType::NAME, false);    
+        assert_token_equal_match(&mut lexer, "", TokenType::NAME, true);    
+        assert_token_equal_match(&mut lexer, "", TokenType::COLON, true);    
+        assert_token_equal_match(&mut lexer, "int", TokenType::TYPE, true);    
+        assert_token_equal_match(&mut lexer, "=", TokenType::ATTR, true);    
+        assert_token_equal_match(&mut lexer, "10", TokenType::INTEGER, true);    
+        assert_token_equal_match(&mut lexer, ";", TokenType::SEMICOLON, true);    
+        assert_token_equal_match(&mut lexer, "EOF", TokenType::EOF, true);    
     }
-
 
     #[test]
     fn consume() {
