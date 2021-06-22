@@ -22,12 +22,11 @@ impl Symbol {
         }
     }
 
-    pub fn new_by_string(symbol_type: &str, is_const: bool) -> Result<Symbol, String> {
+    pub fn new_by_string(symbol_type: &str, is_const: bool) -> Symbol {
         match symbol_type {
-            "int" => Ok(Symbol{symbol_type: Type::INTEGER, is_const}),
-            "float" => Ok(Symbol{symbol_type: Type::FLOAT, is_const}),
-            "string" => Ok(Symbol{symbol_type: Type::STRING, is_const}),
-            _ => Err(format!("Unknown type \"{}\"", symbol_type))
+            "int" => Symbol{symbol_type: Type::INTEGER, is_const},
+            "float" => Symbol{symbol_type: Type::FLOAT, is_const},
+            "string" => Symbol{symbol_type: Type::STRING, is_const},
         }
     }
 }
