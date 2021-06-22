@@ -2,8 +2,11 @@ mod lexer;
 mod errors;
 mod scope_manager;
 
-use errors::error_msgs::{wrong_token_error_msg_handle};
-use errors::{UnexpectedTokenError, ParsingError};
+use errors::error_msgs::{
+    wrong_token_error_msg_handle, 
+    missing_token_error_msg_handle
+};
+use errors::{UnexpectedTokenError, ParsingError, MissingTokenError};
 
 enum Expression {
     Binary(BinaryExpr),
@@ -78,8 +81,18 @@ enum Statement {
 struct IfStmt {
    if_stmts: Vec<Statement>,
    else_stmts: Vec<Statement>,
-   expression: Expression,
+   expr: Expression,
 }
+
+impl IfStmt {
+    pub fn new(if_stmts: Vec<Statement>, else_stmts: Vec<Statement>, expr: Expression) -> Self {
+        IfStmt {
+            if_stmts,
+            else_stmts,
+            expr
+        }
+    }
+} 
 
 struct FuncDeclStmt {
     func_name: String,
@@ -126,6 +139,7 @@ impl<'a> Parser<'a> {
         let mut ast = Vec::new();
         let mut errors = Vec::new();
 
+        
         while ! self.lexer.try_to_match_token(lexer::TokenType::EOF, vec!["EOF"]).0 {
             match self.statement() {
                 Ok(stmt) => ast.push(stmt),
@@ -179,22 +193,52 @@ impl<'a> Parser<'a> {
     fn if_stmt(&mut self) -> Result<Statement, ParsingError> {
         if let Err(err) = self.lexer.match_token(lexer::TokenType::LPARENTHESE, "(") {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &err.text),
+                        errors::error_msgs::UnexpectedTokenError::LPARENTHESE, &err.text),
                         err.line, err.column)));
         }
+
         let expr = self.expression()?;
         if let Err(err) = self.lexer.match_token(lexer::TokenType::RPARENTHESE, ")") {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &err.text),
+                        errors::error_msgs::UnexpectedTokenError::RPARENTHESE, &err.text),
                         err.line, err.column)));
         }
          
         if let Err(err) = self.lexer.match_token(lexer::TokenType::LBRACE, "{") {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &err.text),
+                        errors::error_msgs::UnexpectedTokenError::LBRACE, &err.text),
                         err.line, err.column)));
         }
 
+        let mut if_stmts = Vec::new();
+        while !self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]).0 {
+            if self.lexer.is_empty() {
+                return Err(ParsingError::MissingToken(MissingTokenError::new(missing_token_error_msg_handle(
+                                errors::error_msgs::MissingTokenError::RBRACE))));
+            }
+            if_stmts.push(self.statement()?);
+        } 
+
+        // TODO: Improves else parsing (e.g else if .....)
+        // Check for any else
+        let mut else_stmts = Vec::new();
+        if self.lexer.try_to_match_token(lexer::TokenType::KEYWORD, vec!["else"]).0 {
+            if let Err(err) = self.lexer.match_token(lexer::TokenType::LBRACE, "{") {
+                return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
+                            errors::error_msgs::UnexpectedTokenError::LBRACE, &err.text),
+                            err.line, err.column)));
+            }
+
+            while !self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]).0 {
+                if self.lexer.is_empty() {
+                    return Err(ParsingError::MissingToken(MissingTokenError::new(missing_token_error_msg_handle(
+                                    errors::error_msgs::MissingTokenError::RBRACE))));
+                }
+                else_stmts.push(self.statement()?);
+            } 
+
+        }
+        Ok(Statement::If(IfStmt::new(if_stmts, else_stmts, expr)))
     }
 
     fn return_stmt(&mut self) -> Result<Statement, ParsingError> {
