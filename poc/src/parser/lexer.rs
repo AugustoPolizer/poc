@@ -81,6 +81,10 @@ impl<'a> Lexer<'a> {
         token
     }
 
+    pub fn is_empty(&mut self) -> bool {
+        self.peek_token().token_type == TokenType::EOF
+    }
+
     pub fn try_to_match_token(&mut self, token_type: TokenType, token_text_options: Vec<&str>) -> (bool, Token) {
         match self.peeked_tokens.front() {
             Some(token) => {
@@ -124,18 +128,18 @@ impl<'a> Lexer<'a> {
 
     }
 
-    pub fn match_token(&mut self, token_type: TokenType, token_text: &str) -> Result<(), Token> {
+    pub fn match_token(&mut self, token_type: TokenType, token_text: &str) -> Result<Token, Token> {
 
         match self.peeked_tokens.front() {
             Some(token) => {
                 if token.token_type == token_type {
                     if token_text.is_empty(){
                         self.consume_token();
-                        return Ok(()); 
+                        return Ok(token.clone()); 
                     }
                     if token.text == token_text {
                         self.consume_token();
-                        return Ok(()); 
+                        return Ok(token.clone()); 
                     }
                     return Err(token.clone())
                 } else {
@@ -147,11 +151,11 @@ impl<'a> Lexer<'a> {
                 if token.token_type == token_type {
                     if token_text.is_empty(){
                         self.consume_token();
-                        return Ok(()); 
+                        return Ok(token.clone()); 
                     }
                     if token.text == token_text {
                         self.consume_token();
-                        return Ok(()); 
+                        return Ok(token.clone()); 
                     }
                     return Err(token.clone())
                 } else {
