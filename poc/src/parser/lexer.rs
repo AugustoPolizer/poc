@@ -132,34 +132,36 @@ impl<'a> Lexer<'a> {
 
         match self.peeked_tokens.front() {
             Some(token) => {
-                if token.token_type == token_type {
+                let token_clone = token.clone();
+                if token_clone.token_type == token_type {
                     if token_text.is_empty(){
                         self.consume_token();
-                        return Ok(token.clone()); 
+                        return Ok(token_clone); 
                     }
-                    if token.text == token_text {
+                    if token_clone.text == token_text {
                         self.consume_token();
-                        return Ok(token.clone()); 
+                        return Ok(token_clone); 
                     }
-                    return Err(token.clone())
+                    return Err(token_clone)
                 } else {
-                    return Err(token.clone())
+                    return Err(token_clone)
                 }
             },
             None => {
                 let token = self.peek_token();
-                if token.token_type == token_type {
+                let token_clone = token.clone();
+                if token_clone.token_type == token_type {
                     if token_text.is_empty(){
                         self.consume_token();
-                        return Ok(token.clone()); 
+                        return Ok(token_clone); 
                     }
-                    if token.text == token_text {
+                    if token_clone.text == token_text {
                         self.consume_token();
-                        return Ok(token.clone()); 
+                        return Ok(token_clone); 
                     }
-                    return Err(token.clone())
+                    return Err(token_clone)
                 } else {
-                    return Err(token.clone())
+                    return Err(token_clone)
                 }
             }
         };

@@ -2,17 +2,20 @@ mod lexer;
 mod errors;
 mod scope_manager;
 
-use errors::error_msgs::{
+use errors::{
     wrong_token_error_msg_handle, 
     missing_token_error_msg_handle,
-    scope_error_msg_handle
-};
-
-use errors::{
+    scope_error_msg_handle,
+    internal_error_msg_handle,
+    UnexpectedTokenErrorTypes,
+    MissingTokenErrorTypes,
+    ScopeResolutionErrorTypes,
+    InternalErrorTypes,
     ParsingError,
     UnexpectedTokenError,
     MissingTokenError, 
-    ScopeResolutionError
+    ScopeResolutionError,
+    InternalError
 };
 
 enum Expression {
@@ -177,7 +180,7 @@ impl<'a> Parser<'a> {
         let mut errors = Vec::new();
 
         
-        while ! self.lexer.try_to_match_token(lexer::TokenType::EOF, vec!["EOF"]).0 {
+        while !self.lexer.is_empty() {
             match self.statement() {
                 Ok(stmt) => ast.push(stmt),
                 Err(error) => {
@@ -207,7 +210,7 @@ impl<'a> Parser<'a> {
             "return" => self.return_stmt(),
             "let" => self.var_decl(false),
             "const" => self.var_decl(true),
-            "function" =>  self.func_decl(),
+            // "function" =>  self.func_decl(),
             _ => {
                 match_result = self.lexer.try_to_match_token(lexer::TokenType::NAME, vec![]); 
                 if match_result.0 {
@@ -217,12 +220,12 @@ impl<'a> Parser<'a> {
                     }
                     match_result = self.lexer.try_to_match_token(lexer::TokenType::LPARENTHESE, vec!["("]);
                     if match_result.0 {
-                        return self.func_call();
+                        // return self.func_call();
                     }
                 } 
 
                 return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                            errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &match_result.1.text),
+                            UnexpectedTokenErrorTypes::UNEXPECTEDTOKEN, &match_result.1.text),
                             match_result.1.line, match_result.1.column)));
             }
         };
@@ -232,20 +235,20 @@ impl<'a> Parser<'a> {
     fn if_stmt(&mut self) -> Result<Statement, ParsingError> {
         if let Err(err) = self.lexer.match_token(lexer::TokenType::LPARENTHESE, "(") {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::LPARENTHESE, &err.text),
+                        UnexpectedTokenErrorTypes::LPARENTHESE, &err.text),
                         err.line, err.column)));
         }
 
         let expr = self.expression()?;
         if let Err(err) = self.lexer.match_token(lexer::TokenType::RPARENTHESE, ")") {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::RPARENTHESE, &err.text),
+                        UnexpectedTokenErrorTypes::RPARENTHESE, &err.text),
                         err.line, err.column)));
         }
          
         if let Err(err) = self.lexer.match_token(lexer::TokenType::LBRACE, "{") {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::LBRACE, &err.text),
+                        UnexpectedTokenErrorTypes::LBRACE, &err.text),
                         err.line, err.column)));
         }
 
@@ -253,7 +256,7 @@ impl<'a> Parser<'a> {
         while !self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]).0 {
             if self.lexer.is_empty() {
                 return Err(ParsingError::MissingToken(MissingTokenError::new(missing_token_error_msg_handle(
-                                errors::error_msgs::MissingTokenError::RBRACE))));
+                                MissingTokenErrorTypes::RBRACE))));
             }
             if_stmts.push(self.statement()?);
         } 
@@ -264,14 +267,14 @@ impl<'a> Parser<'a> {
         if self.lexer.try_to_match_token(lexer::TokenType::KEYWORD, vec!["else"]).0 {
             if let Err(err) = self.lexer.match_token(lexer::TokenType::LBRACE, "{") {
                 return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                            errors::error_msgs::UnexpectedTokenError::LBRACE, &err.text),
+                            UnexpectedTokenErrorTypes::LBRACE, &err.text),
                             err.line, err.column)));
             }
 
             while !self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]).0 {
                 if self.lexer.is_empty() {
                     return Err(ParsingError::MissingToken(MissingTokenError::new(missing_token_error_msg_handle(
-                                    errors::error_msgs::MissingTokenError::RBRACE))));
+                                    MissingTokenErrorTypes::RBRACE))));
                 }
                 else_stmts.push(self.statement()?);
             } 
@@ -285,7 +288,7 @@ impl<'a> Parser<'a> {
 
         if let Err(err) = self.lexer.match_token(lexer::TokenType::SEMICOLON, ";") {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::SEMICOLON, &err.text),
+                        UnexpectedTokenErrorTypes::SEMICOLON, &err.text),
                         err.line, err.column)));
         }
 
@@ -297,20 +300,20 @@ impl<'a> Parser<'a> {
            Ok(token) => {
                if self.name_exist_in_current_scope(&token.text) {
                    return Err(ParsingError::ScopeResolution(ScopeResolutionError::new(scope_error_msg_handle(
-                                   errors::error_msgs::ScopeError::ALREADYDECLARED, &token.text),
+                                   ScopeResolutionErrorTypes::ALREADYDECLARED, &token.text),
                                    token.line, token.column)));
                }
 
                if let Err(err) = self.lexer.match_token(lexer::TokenType::COLON, ":") { 
                    return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::COLON, &err.text),
+                        UnexpectedTokenErrorTypes::COLON, &err.text),
                         err.line, err.column)));
                    
                }
                 
                match self.lexer.match_token(lexer::TokenType::TYPE, "") {
                    Ok(token_type) => {
-                        self.scopes.insert_symbol(scope_manager::Symbol::new_by_string(&token_type.text, is_const), token.text);
+                        self.scopes.create_new_symbol(self.string_to_symbol_type(&token_type.text)?, &token.text, is_const);
                         // var optional initialization
                         let mut expr = None;
                         if self.lexer.try_to_match_token(lexer::TokenType::ATTR, vec!["="]).0 {
@@ -319,14 +322,14 @@ impl<'a> Parser<'a> {
 
                         if let Err(err) = self.lexer.match_token(lexer::TokenType::SEMICOLON, ";") {
                            return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                                errors::error_msgs::UnexpectedTokenError::SEMICOLON, &err.text),
+                                UnexpectedTokenErrorTypes::SEMICOLON, &err.text),
                                 err.line, err.column)));
                         }
                         Ok(Statement::VarDecl(VarDeclStmt::new(token.text, expr)))
                    },
                    Err(err) => {
                        return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                            errors::error_msgs::UnexpectedTokenError::TYPE, &err.text),
+                            UnexpectedTokenErrorTypes::TYPE, &err.text),
                             err.line, err.column)));
                    }
                }
@@ -335,13 +338,10 @@ impl<'a> Parser<'a> {
            },
            Err(err) => { 
                return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                    errors::error_msgs::UnexpectedTokenError::VARNAME, &err.text),
+                    UnexpectedTokenErrorTypes::VARNAME, &err.text),
                     err.line, err.column)));
            }
        }
-    }
-
-    fn func_decl(&mut self) -> Result<Statement, ParsingError> {
     }
 
     fn attr_stmt(&mut self,var_name: String) -> Result<Statement, ParsingError> {
@@ -349,14 +349,11 @@ impl<'a> Parser<'a> {
         
         if let Err(err) = self.lexer.match_token(lexer::TokenType::SEMICOLON, ";") {
            return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                errors::error_msgs::UnexpectedTokenError::SEMICOLON, &err.text),
+                UnexpectedTokenErrorTypes::SEMICOLON, &err.text),
                 err.line, err.column)));
         }
         
         Ok(Statement::Attr(AttrStmt::new(var_name, expr)))
-    }
-
-    fn func_call(&mut self) -> Result<Statement, ParsingError> {
     }
 
      // Expression parsing functions
@@ -447,12 +444,12 @@ impl<'a> Parser<'a> {
             match_result = self.lexer.try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"]);
             if !match_result.0 {
                 return Err(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::RPARENTHESE, &match_result.1.text),match_result.1.line, match_result.1.column));
+                        UnexpectedTokenErrorTypes::RPARENTHESE, &match_result.1.text),match_result.1.line, match_result.1.column));
             }
             return Ok(Expression::Grouping(GroupingExpr::new(expr)));
         } else {
             return Err(UnexpectedTokenError::new(wrong_token_error_msg_handle(
-                        errors::error_msgs::UnexpectedTokenError::UNEXPECTEDTOKEN, &match_result.1.text), 
+                        UnexpectedTokenErrorTypes::UNEXPECTEDTOKEN, &match_result.1.text), 
                     match_result.1.line, match_result.1.column));
         }
 
@@ -463,11 +460,21 @@ impl<'a> Parser<'a> {
         if let Some(_) = self.scopes.find_symbol_in_current_scope(name){
             return true;
         } else {
-            if let Some(func_decl) = self.scopes.find_func_decl_in_current_scope(name) {
+            if let Some(_) = self.scopes.find_func_decl_in_current_scope(name) {
                return true; 
             } else {
                 return false;
             }
+        }
+    }
+
+    fn string_to_symbol_type(& self, type_string: &str) -> Result<scope_manager::Type, ParsingError> {
+        match type_string {
+            "int" => Ok(scope_manager::Type::INTEGER),
+            "float" => Ok(scope_manager::Type::FLOAT),
+            "string" => Ok(scope_manager::Type::STRING),
+            _ => Err(ParsingError::Internal(InternalError::new(internal_error_msg_handle(
+                            InternalErrorTypes::UNEXPECTEDERROR, format!("Found a unknown type at the parsing: {}", type_string).as_str()))))
         }
     }
 }
