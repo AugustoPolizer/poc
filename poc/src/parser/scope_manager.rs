@@ -1,3 +1,9 @@
+use crate::parser::errors::{ 
+    InternalError,
+    ParsingError,
+    internal_error_msg_handle,
+    InternalErrorTypes
+};
 
 use std::collections;
 
@@ -19,15 +25,6 @@ impl Symbol {
         Symbol{
             symbol_type,
             is_const
-        }
-    }
-
-    pub fn new_by_string(symbol_type: &str, is_const: bool) -> Result<Symbol, String> {
-        match symbol_type {
-            "int" => Ok(Symbol{symbol_type: Type::INTEGER, is_const}),
-            "float" => Ok(Symbol{symbol_type: Type::FLOAT, is_const}),
-            "string" => Ok(Symbol{symbol_type: Type::STRING, is_const}),
-            _ => Err(format!("Unknown type \"{}\"", symbol_type))
         }
     }
 }
@@ -83,13 +80,19 @@ impl ScopeManager {
         }
     }
 
-    pub fn insert_symbol(& mut self, symbol: Symbol, symbol_name: String) -> Result<(), &'static str> {
+    pub fn create_new_symbol(& mut self, symbol_type: Type, symbol_name: &str, is_const: bool) -> Result<(), ParsingError> {
         if self.scopes.is_empty() {
-            return Err("There is no scope to insert symbol");
+            return Err(ParsingError::Internal(
+                    InternalError::new(internal_error_msg_handle(
+                            InternalErrorTypes::UNABLETOINSERTSYMBOL, 
+                            "There is no scope to insert the symbol"))));
         }
 
         let idx = self.scopes.len() - 1;
-        self.scopes[idx].symbol_table.insert(symbol_name, symbol);
+        self.scopes[idx].symbol_table.insert(
+            symbol_name.to_string(), 
+            Symbol::new(symbol_type, is_const)
+        );
 
         Ok(())
     }
@@ -164,33 +167,6 @@ mod tests {
     } 
 
     #[test]
-    fn create_symbol() {
-        let mut symbol = match Symbol::new_by_string("int", true) {
-            Ok(x) => x,
-            Err(_) => return assert!(false)
-        };
-        assert_symbol_equal(&symbol, Type::INTEGER, true);
-
-        symbol = match Symbol::new_by_string("float", false) {
-            Ok(x) => x,
-            Err(_) => return assert!(false)
-        };
-
-        assert_symbol_equal(&symbol, Type::FLOAT, false);
-        
-        symbol = match Symbol::new_by_string("string", false) {
-            Ok(x) => x,
-            Err(_) => return assert!(false)
-        };
-        assert_symbol_equal(&symbol, Type::STRING, false);
-        
-        match Symbol::new_by_string("invalid_type", false) {
-            Ok(_) => assert!(false),
-            Err(_) => assert!(true)
-        };
-    }
-
-    #[test]
     fn create_scope() {
         let mut scope_manager = ScopeManager::new();
 
@@ -222,7 +198,7 @@ mod tests {
         let mut scope_manager = ScopeManager::new();
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, false), String::from("var_test")) {
+        match scope_manager.create_new_symbol(Type::INTEGER, "var_test", false){
             Ok(_) => assert!(true),
             Err(_) => assert!(false)
         }
@@ -232,7 +208,7 @@ mod tests {
     fn insert_symbol_incorrect_use() {
         let mut scope_manager = ScopeManager::new();
 
-        match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, false), String::from("var_test")) {
+        match scope_manager.create_new_symbol(Type::INTEGER, "var_test", false) {
             Ok(_) => assert!(false),
             Err(_) => assert!(true)
         }
@@ -264,13 +240,13 @@ mod tests {
         let mut scope_manager = ScopeManager::new();
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, true), String::from("var_test1")) {
+        match scope_manager.create_new_symbol(Type::INTEGER, "var_test1", true) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false)
         }
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_symbol(Symbol::new(Type::FLOAT, false), String::from("var_test2")) {
+        match scope_manager.create_new_symbol(Type::FLOAT,"var_test2", false) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false)
         }
@@ -295,7 +271,7 @@ mod tests {
         let mut scope_manager = ScopeManager::new();
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, true), String::from("var_test")) {
+        match scope_manager.create_new_symbol(Type::INTEGER, "var_test", true) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false)
         }
@@ -311,13 +287,13 @@ mod tests {
         let mut scope_manager = ScopeManager::new();
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_symbol(Symbol::new(Type::INTEGER, true), String::from("var_test1")) {
+        match scope_manager.create_new_symbol(Type::INTEGER, "var_test1", true) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false)
         }
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_symbol(Symbol::new(Type::FLOAT, false), String::from("var_test2")) {
+        match scope_manager.create_new_symbol(Type::FLOAT, "var_test2", false) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false)
         }
