@@ -6,7 +6,7 @@ pub struct Lexer<'a> {
     types: std::collections::HashSet<&'static str>,
     peeked_tokens: std::collections::VecDeque<Token>,
     current_line: u32,
-    current_column: u32
+    current_column: u32,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -31,7 +31,7 @@ pub enum TokenType {
     COLON,
     COMMA,
     EOF,
-    UNKNOWN
+    UNKNOWN,
 }
 
 #[derive(Clone)]
@@ -39,12 +39,17 @@ pub struct Token {
     pub token_type: TokenType,
     pub text: String,
     pub line: u32,
-    pub column: u32
+    pub column: u32,
 }
 
 impl Token {
     pub fn new(token_type: TokenType, text: String, line: u32, column: u32) -> Token {
-        Token { token_type, text , line, column}
+        Token {
+            token_type,
+            text,
+            line,
+            column,
+        }
     }
 }
 
@@ -58,18 +63,21 @@ impl<'a> Lexer<'a> {
     pub fn new(raw_code: &'a str) -> Lexer<'a> {
         Lexer {
             code_iterator: raw_code.chars().peekable(),
-            keywords: ["function", "return", "if", "else", "let", "const"].iter().cloned().collect(),
+            keywords: ["function", "return", "if", "else", "let", "const"]
+                .iter()
+                .cloned()
+                .collect(),
             types: ["int", "float", "string"].iter().cloned().collect(),
             peeked_tokens: std::collections::VecDeque::new(),
             current_line: 1,
-            current_column: 1
+            current_column: 1,
         }
     }
 
     fn consume_token(&mut self) -> Token {
         let token = match self.peeked_tokens.pop_front() {
             Some(t) => t,
-            None => self.get_token()
+            None => self.get_token(),
         };
         token
     }
@@ -85,7 +93,11 @@ impl<'a> Lexer<'a> {
         self.peek_token().token_type == TokenType::EOF
     }
 
-    pub fn try_to_match_token(&mut self, token_type: TokenType, token_text_options: Vec<&str>) -> (bool, Token) {
+    pub fn try_to_match_token(
+        &mut self,
+        token_type: TokenType,
+        token_text_options: Vec<&str>,
+    ) -> (bool, Token) {
         match self.peeked_tokens.front() {
             Some(token) => {
                 let token_clone = token.clone();
@@ -100,18 +112,24 @@ impl<'a> Lexer<'a> {
                             return (true, token_clone);
                         }
                     }
-                    return (false, Token::new(TokenType::UNKNOWN, String::from(""),0,0));
+                    return (
+                        false,
+                        Token::new(TokenType::UNKNOWN, String::from(""), 0, 0),
+                    );
                 } else {
-                    return (false, Token::new(TokenType::UNKNOWN, String::from(""), 0, 0));
+                    return (
+                        false,
+                        Token::new(TokenType::UNKNOWN, String::from(""), 0, 0),
+                    );
                 }
-            },
+            }
             None => {
                 let token = self.peek_token();
                 if token.token_type == token_type {
                     let token_clone = token.clone();
                     if token_text_options.is_empty() {
                         self.consume_token();
-                        return (true, token_clone); 
+                        return (true, token_clone);
                     }
                     for text in token_text_options {
                         if text == token_clone.text {
@@ -119,63 +137,59 @@ impl<'a> Lexer<'a> {
                             return (true, token_clone);
                         }
                     }
-                    return (false, Token::new(TokenType::EOF, String::from(""),0,0));
+                    return (false, Token::new(TokenType::EOF, String::from(""), 0, 0));
                 } else {
-                    return (false, Token::new(TokenType::EOF, String::from(""),0,0));
+                    return (false, Token::new(TokenType::EOF, String::from(""), 0, 0));
                 }
             }
         };
-
     }
 
     pub fn match_token(&mut self, token_type: TokenType, token_text: &str) -> Result<Token, Token> {
-
         match self.peeked_tokens.front() {
             Some(token) => {
                 let token_clone = token.clone();
                 if token_clone.token_type == token_type {
-                    if token_text.is_empty(){
+                    if token_text.is_empty() {
                         self.consume_token();
-                        return Ok(token_clone); 
+                        return Ok(token_clone);
                     }
                     if token_clone.text == token_text {
                         self.consume_token();
-                        return Ok(token_clone); 
+                        return Ok(token_clone);
                     }
-                    return Err(token_clone)
+                    return Err(token_clone);
                 } else {
-                    return Err(token_clone)
+                    return Err(token_clone);
                 }
-            },
+            }
             None => {
                 let token = self.peek_token();
                 let token_clone = token.clone();
                 if token_clone.token_type == token_type {
-                    if token_text.is_empty(){
+                    if token_text.is_empty() {
                         self.consume_token();
-                        return Ok(token_clone); 
+                        return Ok(token_clone);
                     }
                     if token_clone.text == token_text {
                         self.consume_token();
-                        return Ok(token_clone); 
+                        return Ok(token_clone);
                     }
-                    return Err(token_clone)
+                    return Err(token_clone);
                 } else {
-                    return Err(token_clone)
+                    return Err(token_clone);
                 }
             }
         };
-
     }
 
     fn get_token(&mut self) -> Token {
-
         let mut lookahead = match self.code_iterator.peek() {
             Some(c) => *c,
-            None => return Token::new(TokenType::EOF, String::from("EOF"), 0, 0)
+            None => return Token::new(TokenType::EOF, String::from("EOF"), 0, 0),
         };
 
-        // Remove whitespaces 
+        // Remove whitespaces
         if lookahead == ' ' || lookahead == '\n' || lookahead == '\t' || lookahead == '\r' {
             self.code_iterator.next();
             self.update_iterator_position_by_witespaces(&lookahead);
@@ -185,24 +199,29 @@ impl<'a> Lexer<'a> {
                     None => return Token::new(TokenType::EOF, String::from("EOF"), 0, 0),
                 };
                 match lookahead {
-                    ' ' | '\n' | '\t' | '\r' => { 
-                        self.code_iterator.next(); 
+                    ' ' | '\n' | '\t' | '\r' => {
+                        self.code_iterator.next();
                         self.update_iterator_position_by_witespaces(&lookahead);
-                    },
+                    }
                     _ => break,
                 };
             }
         }
-        
+
         // Parsing tokens that need a lookahead equal to 2
-        let mut parsing_tokens_ll2 = | second_possible_char: char, first_token_type: TokenType, second_token_type: TokenType| -> Token {
+        let mut parsing_tokens_ll2 = |second_possible_char: char,
+                                      first_token_type: TokenType,
+                                      second_token_type: TokenType|
+         -> Token {
             let mut buffer = String::new();
             let start_column = self.current_column;
             buffer.push(lookahead);
             self.consume_char();
             let lookahead_2 = match self.code_iterator.peek() {
                 Some(c) => *c,
-                None => return Token::new(first_token_type, buffer, self.current_line, start_column)
+                None => {
+                    return Token::new(first_token_type, buffer, self.current_line, start_column)
+                }
             };
             if lookahead_2 != second_possible_char {
                 return Token::new(first_token_type, buffer, self.current_line, start_column);
@@ -230,7 +249,7 @@ impl<'a> Lexer<'a> {
                 if self.keywords.contains(buffer.as_str()) {
                     println!("{}, {}", self.current_line, start_column);
                     return Token::new(TokenType::KEYWORD, buffer, self.current_line, start_column);
-                } else if self.types.contains(buffer.as_str()){
+                } else if self.types.contains(buffer.as_str()) {
                     return Token::new(TokenType::TYPE, buffer, self.current_line, start_column);
                 }
                 Token::new(TokenType::NAME, buffer, self.current_line, start_column)
@@ -272,80 +291,123 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 if float {
-                    return Token::new(TokenType::FLOAT, buffer, self.current_line, start_column) 
+                    return Token::new(TokenType::FLOAT, buffer, self.current_line, start_column);
                 }
-                Token::new(TokenType::INTEGER, buffer, self.current_line, start_column) 
+                Token::new(TokenType::INTEGER, buffer, self.current_line, start_column)
             }
-            '&' => {
-                parsing_tokens_ll2('&', TokenType::OP, TokenType::OP)
-            }
-            '|' => {
-                parsing_tokens_ll2('|', TokenType::OP, TokenType::OP)
-            }
-            '<' | '>' =>  {
-                parsing_tokens_ll2('=', TokenType::OP, TokenType::OP)
-            }
-            '=' => {
-                parsing_tokens_ll2('=', TokenType::ATTR, TokenType::OP)
-            }
-            '-' => {
-                parsing_tokens_ll2('>', TokenType::OP, TokenType::ARROW)
-            }
-            '!' => {
-                parsing_tokens_ll2('=', TokenType::UNARYOP, TokenType::OP)
-            }
+            '&' => parsing_tokens_ll2('&', TokenType::OP, TokenType::OP),
+            '|' => parsing_tokens_ll2('|', TokenType::OP, TokenType::OP),
+            '<' | '>' => parsing_tokens_ll2('=', TokenType::OP, TokenType::OP),
+            '=' => parsing_tokens_ll2('=', TokenType::ATTR, TokenType::OP),
+            '-' => parsing_tokens_ll2('>', TokenType::OP, TokenType::ARROW),
+            '!' => parsing_tokens_ll2('=', TokenType::UNARYOP, TokenType::OP),
             '+' | '*' | '/' => {
-                let token = Token::new(TokenType::OP, String::from(lookahead), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::OP,
+                    String::from(lookahead),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             ';' => {
-                let token = Token::new(TokenType::SEMICOLON, String::from(";"), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::SEMICOLON,
+                    String::from(";"),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             ',' => {
-                let token = Token::new(TokenType::COMMA, String::from(","), self.current_line, self.current_column); 
-               self.consume_char();
+                let token = Token::new(
+                    TokenType::COMMA,
+                    String::from(","),
+                    self.current_line,
+                    self.current_column,
+                );
+                self.consume_char();
                 token
             }
             ':' => {
-                let token = Token::new(TokenType::COLON, String::from(":"), self.current_line, self.current_column); 
+                let token = Token::new(
+                    TokenType::COLON,
+                    String::from(":"),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             '(' => {
-                let token = Token::new(TokenType::LPARENTHESE, String::from("("), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::LPARENTHESE,
+                    String::from("("),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             ')' => {
-                let token = Token::new(TokenType::RPARENTHESE, String::from(")"), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::RPARENTHESE,
+                    String::from(")"),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             '[' => {
-                let token = Token::new(TokenType::LBRACK, String::from("["), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::LBRACK,
+                    String::from("["),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             ']' => {
-                let token = Token::new(TokenType::RBRACK, String::from("]"), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::RBRACK,
+                    String::from("]"),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             '{' => {
-                let token = Token::new(TokenType::LBRACE, String::from("{"), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::LBRACE,
+                    String::from("{"),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             '}' => {
-                let token = Token::new(TokenType::RBRACE, String::from("}"), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::RBRACE,
+                    String::from("}"),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
             _ => {
-                let token = Token::new(TokenType::UNKNOWN, String::from("UNK"), self.current_line, self.current_column);
+                let token = Token::new(
+                    TokenType::UNKNOWN,
+                    String::from("UNK"),
+                    self.current_line,
+                    self.current_column,
+                );
                 self.consume_char();
                 token
             }
@@ -370,40 +432,48 @@ impl<'a> Lexer<'a> {
         } else if *whitespace == '\r' {
             self.current_column = 1;
         }
-
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn assert_token_equal(lexer: &mut Lexer, text: &str, token_type: TokenType){
+    fn assert_token_equal(lexer: &mut Lexer, text: &str, token_type: TokenType) {
         let token = lexer.get_token();
         assert_eq!(token.text, text);
         assert_eq!(token.token_type, token_type);
     }
 
-    fn assert_token_equal_consume(lexer: &mut Lexer, text: &str, token_type: TokenType){
+    fn assert_token_equal_consume(lexer: &mut Lexer, text: &str, token_type: TokenType) {
         let token = lexer.consume_token();
         assert_eq!(token.text, text);
         assert_eq!(token.token_type, token_type);
     }
 
-    fn assert_token_equal_peek(lexer: &mut Lexer, text: &str, token_type: TokenType){
+    fn assert_token_equal_peek(lexer: &mut Lexer, text: &str, token_type: TokenType) {
         let token = lexer.peek_token();
         assert_eq!(token.text, text);
         assert_eq!(token.token_type, token_type);
     }
 
-    fn assert_token_equal_try_match(lexer: &mut Lexer, options: Vec<&str>, token_type: TokenType, expected_result: (bool, &str)){
+    fn assert_token_equal_try_match(
+        lexer: &mut Lexer,
+        options: Vec<&str>,
+        token_type: TokenType,
+        expected_result: (bool, &str),
+    ) {
         let match_result = lexer.try_to_match_token(token_type, options);
         assert_eq!(match_result.0, expected_result.0);
         assert_eq!(match_result.1.text, expected_result.1);
     }
 
-    fn assert_token_equal_match(lexer: &mut Lexer, token_text: &str, token_type: TokenType, expected_result: bool) {
+    fn assert_token_equal_match(
+        lexer: &mut Lexer,
+        token_text: &str,
+        token_type: TokenType,
+        expected_result: bool,
+    ) {
         match lexer.match_token(token_type, token_text) {
             Ok(_) => {
                 if expected_result {
@@ -420,7 +490,7 @@ mod tests {
         }
     }
 
-    fn assert_token_equal_current_position(lexer: &mut Lexer, line: u32, column: u32){
+    fn assert_token_equal_current_position(lexer: &mut Lexer, line: u32, column: u32) {
         let token = lexer.peek_token();
         assert_eq!(token.line, line);
         assert_eq!(token.column, column);
@@ -458,7 +528,7 @@ mod tests {
             let c : float = a + b;
         }";
         let mut lexer: Lexer = Lexer::new(&code);
-        
+
         assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
         assert_token_equal(&mut lexer, "attributionTest", TokenType::NAME);
         assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
@@ -498,9 +568,9 @@ mod tests {
                 return (500.01 + 3) * 2.015 + (1 / 3);
             }
             ";
-        
+
         let mut lexer: Lexer = Lexer::new(&code);
-        
+
         assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
         assert_token_equal(&mut lexer, "operators", TokenType::NAME);
         assert_token_equal(&mut lexer, "(", TokenType::LPARENTHESE);
@@ -565,7 +635,7 @@ mod tests {
                 }
             }
             ";
-        
+
         let mut lexer: Lexer = Lexer::new(&code);
         assert_token_equal(&mut lexer, "function", TokenType::KEYWORD);
         assert_token_equal(&mut lexer, "operators", TokenType::NAME);
@@ -624,16 +694,16 @@ mod tests {
             let a: int = 10; 
             ";
         let mut lexer: Lexer = Lexer::new(&code);
-        
-        assert_token_equal_peek(&mut lexer, "let", TokenType::KEYWORD);    
-        assert_token_equal_peek(&mut lexer, "a", TokenType::NAME);    
-        assert_token_equal_peek(&mut lexer, ":", TokenType::COLON);    
-        assert_token_equal_peek(&mut lexer, "int", TokenType::TYPE);    
-        assert_token_equal_peek(&mut lexer, "=", TokenType::ATTR);    
-        assert_token_equal_peek(&mut lexer, "10", TokenType::INTEGER);    
-        assert_token_equal_peek(&mut lexer, ";", TokenType::SEMICOLON);    
-        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
-        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
+
+        assert_token_equal_peek(&mut lexer, "let", TokenType::KEYWORD);
+        assert_token_equal_peek(&mut lexer, "a", TokenType::NAME);
+        assert_token_equal_peek(&mut lexer, ":", TokenType::COLON);
+        assert_token_equal_peek(&mut lexer, "int", TokenType::TYPE);
+        assert_token_equal_peek(&mut lexer, "=", TokenType::ATTR);
+        assert_token_equal_peek(&mut lexer, "10", TokenType::INTEGER);
+        assert_token_equal_peek(&mut lexer, ";", TokenType::SEMICOLON);
+        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);
+        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);
     }
 
     #[test]
@@ -642,16 +712,26 @@ mod tests {
             let a: int = 10; 
         ";
         let mut lexer: Lexer = Lexer::new(&code);
-        assert_token_equal_try_match(&mut lexer, vec!["let"], TokenType::KEYWORD, (true, "let"));    
-        assert_token_equal_try_match(&mut lexer, vec!["let", "const", "int"], TokenType::KEYWORD, (false, ""));    
-        assert_token_equal_try_match(&mut lexer, vec!["test"], TokenType::NAME, (false, ""));    
-        assert_token_equal_try_match(&mut lexer, vec![], TokenType::NAME, (true, "a"));    
-        assert_token_equal_try_match(&mut lexer, vec![";", ":"], TokenType::COLON, (true, ":"));    
-        assert_token_equal_try_match(&mut lexer, vec!["int", "float"], TokenType::TYPE, (true, "int"));    
-        assert_token_equal_try_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));    
-        assert_token_equal_try_match(&mut lexer, vec!["10"], TokenType::INTEGER, (true, "10"));    
-        assert_token_equal_try_match(&mut lexer, vec![";"], TokenType::SEMICOLON, (true, ";"));    
-        assert_token_equal_try_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, "EOF"));    
+        assert_token_equal_try_match(&mut lexer, vec!["let"], TokenType::KEYWORD, (true, "let"));
+        assert_token_equal_try_match(
+            &mut lexer,
+            vec!["let", "const", "int"],
+            TokenType::KEYWORD,
+            (false, ""),
+        );
+        assert_token_equal_try_match(&mut lexer, vec!["test"], TokenType::NAME, (false, ""));
+        assert_token_equal_try_match(&mut lexer, vec![], TokenType::NAME, (true, "a"));
+        assert_token_equal_try_match(&mut lexer, vec![";", ":"], TokenType::COLON, (true, ":"));
+        assert_token_equal_try_match(
+            &mut lexer,
+            vec!["int", "float"],
+            TokenType::TYPE,
+            (true, "int"),
+        );
+        assert_token_equal_try_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));
+        assert_token_equal_try_match(&mut lexer, vec!["10"], TokenType::INTEGER, (true, "10"));
+        assert_token_equal_try_match(&mut lexer, vec![";"], TokenType::SEMICOLON, (true, ";"));
+        assert_token_equal_try_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, "EOF"));
     }
 
     #[test]
@@ -660,16 +740,16 @@ mod tests {
             let a: int = 10; 
         ";
         let mut lexer: Lexer = Lexer::new(&code);
-        assert_token_equal_match(&mut lexer, "let", TokenType::KEYWORD, true);    
-        assert_token_equal_match(&mut lexer, "const", TokenType::KEYWORD, false);    
-        assert_token_equal_match(&mut lexer, "test", TokenType::NAME, false);    
-        assert_token_equal_match(&mut lexer, "", TokenType::NAME, true);    
-        assert_token_equal_match(&mut lexer, "", TokenType::COLON, true);    
-        assert_token_equal_match(&mut lexer, "int", TokenType::TYPE, true);    
-        assert_token_equal_match(&mut lexer, "=", TokenType::ATTR, true);    
-        assert_token_equal_match(&mut lexer, "10", TokenType::INTEGER, true);    
-        assert_token_equal_match(&mut lexer, ";", TokenType::SEMICOLON, true);    
-        assert_token_equal_match(&mut lexer, "EOF", TokenType::EOF, true);    
+        assert_token_equal_match(&mut lexer, "let", TokenType::KEYWORD, true);
+        assert_token_equal_match(&mut lexer, "const", TokenType::KEYWORD, false);
+        assert_token_equal_match(&mut lexer, "test", TokenType::NAME, false);
+        assert_token_equal_match(&mut lexer, "", TokenType::NAME, true);
+        assert_token_equal_match(&mut lexer, "", TokenType::COLON, true);
+        assert_token_equal_match(&mut lexer, "int", TokenType::TYPE, true);
+        assert_token_equal_match(&mut lexer, "=", TokenType::ATTR, true);
+        assert_token_equal_match(&mut lexer, "10", TokenType::INTEGER, true);
+        assert_token_equal_match(&mut lexer, ";", TokenType::SEMICOLON, true);
+        assert_token_equal_match(&mut lexer, "EOF", TokenType::EOF, true);
     }
 
     #[test]
@@ -678,16 +758,16 @@ mod tests {
             let a: int = 10; 
             ";
         let mut lexer: Lexer = Lexer::new(&code);
-        
-        assert_token_equal_consume(&mut lexer, "let", TokenType::KEYWORD);    
-        assert_token_equal_consume(&mut lexer, "a", TokenType::NAME);    
-        assert_token_equal_consume(&mut lexer, ":", TokenType::COLON);    
-        assert_token_equal_consume(&mut lexer, "int", TokenType::TYPE);    
-        assert_token_equal_consume(&mut lexer, "=", TokenType::ATTR);    
-        assert_token_equal_consume(&mut lexer, "10", TokenType::INTEGER);    
-        assert_token_equal_consume(&mut lexer, ";", TokenType::SEMICOLON);    
-        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
-        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
+
+        assert_token_equal_consume(&mut lexer, "let", TokenType::KEYWORD);
+        assert_token_equal_consume(&mut lexer, "a", TokenType::NAME);
+        assert_token_equal_consume(&mut lexer, ":", TokenType::COLON);
+        assert_token_equal_consume(&mut lexer, "int", TokenType::TYPE);
+        assert_token_equal_consume(&mut lexer, "=", TokenType::ATTR);
+        assert_token_equal_consume(&mut lexer, "10", TokenType::INTEGER);
+        assert_token_equal_consume(&mut lexer, ";", TokenType::SEMICOLON);
+        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);
+        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);
     }
 
     #[test]
@@ -696,23 +776,23 @@ mod tests {
             let a: int = 10; 
             ";
         let mut lexer: Lexer = Lexer::new(&code);
-        
-        assert_token_equal_consume(&mut lexer, "let", TokenType::KEYWORD);    
-        assert_token_equal_peek(&mut lexer, "a", TokenType::NAME);    
-        assert_token_equal_peek(&mut lexer, ":", TokenType::COLON);    
-        assert_token_equal_consume(&mut lexer, "a", TokenType::NAME);    
-        assert_token_equal_consume(&mut lexer, ":", TokenType::COLON);    
-        assert_token_equal_consume(&mut lexer, "int", TokenType::TYPE);     
-        assert_token_equal_peek(&mut lexer, "=", TokenType::ATTR);    
-        assert_token_equal_peek(&mut lexer, "10", TokenType::INTEGER);    
-        assert_token_equal_peek(&mut lexer, ";", TokenType::SEMICOLON);    
-        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);    
-        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);     
-        assert_token_equal_consume(&mut lexer, "=", TokenType::ATTR);    
-        assert_token_equal_consume(&mut lexer, "10", TokenType::INTEGER);    
-        assert_token_equal_consume(&mut lexer, ";", TokenType::SEMICOLON);    
-        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
-        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);    
+
+        assert_token_equal_consume(&mut lexer, "let", TokenType::KEYWORD);
+        assert_token_equal_peek(&mut lexer, "a", TokenType::NAME);
+        assert_token_equal_peek(&mut lexer, ":", TokenType::COLON);
+        assert_token_equal_consume(&mut lexer, "a", TokenType::NAME);
+        assert_token_equal_consume(&mut lexer, ":", TokenType::COLON);
+        assert_token_equal_consume(&mut lexer, "int", TokenType::TYPE);
+        assert_token_equal_peek(&mut lexer, "=", TokenType::ATTR);
+        assert_token_equal_peek(&mut lexer, "10", TokenType::INTEGER);
+        assert_token_equal_peek(&mut lexer, ";", TokenType::SEMICOLON);
+        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);
+        assert_token_equal_peek(&mut lexer, "EOF", TokenType::EOF);
+        assert_token_equal_consume(&mut lexer, "=", TokenType::ATTR);
+        assert_token_equal_consume(&mut lexer, "10", TokenType::INTEGER);
+        assert_token_equal_consume(&mut lexer, ";", TokenType::SEMICOLON);
+        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);
+        assert_token_equal_consume(&mut lexer, "EOF", TokenType::EOF);
     }
 
     #[test]
@@ -733,7 +813,6 @@ mod tests {
 
     #[test]
     fn test_current_position_with_multiple_lines() {
-
         let code = r"
 function attributionTest() {
     const a : int = 1;
@@ -774,6 +853,3 @@ function attributionTest() {
         assert_token_equal_current_position(&mut lexer, 0, 0);
     }
 }
-
-
-
