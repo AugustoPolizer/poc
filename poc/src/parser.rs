@@ -4,7 +4,7 @@ mod scope_manager;
 
 use errors::{
     internal_error_msg_handle, missing_token_error_msg_handle, scope_error_msg_handle,
-    wrong_token_error_msg_handle, InternalError, InternalErrorTypes, MissingTokenError,
+    unexpected_token_error_msg, InternalError, InternalErrorTypes, MissingTokenError,
     MissingTokenErrorTypes, ParsingError, ScopeResolutionError, ScopeResolutionErrorTypes,
     UnexpectedTokenError, UnexpectedTokenErrorTypes,
 };
@@ -94,9 +94,19 @@ impl IfStmt {
 }
 
 struct FuncDeclStmt {
-    func_name: String,
-    func_params: Vec<String>,
-    func_body: Vec<Statement>,
+    name: String,
+    params: Vec<String>,
+    body: Vec<Statement>,
+}
+
+impl FuncDeclStmt {
+    pub fn new(name: String, params: Vec<String>, body: Vec<Statement>) -> FuncDeclStmt{
+        FuncDeclStmt {
+            name,
+            params,
+            body
+        }
+    }
 }
 
 struct FuncCallStmt {
@@ -191,7 +201,7 @@ impl<'a> Parser<'a> {
             "return" => self.return_stmt(),
             "let" => self.var_decl(false),
             "const" => self.var_decl(true),
-            // "function" =>  self.func_decl(),
+            "function" =>  self.func_decl(),
             _ => {
                 match_result = self
                     .lexer
@@ -212,7 +222,7 @@ impl<'a> Parser<'a> {
                 }
 
                 return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                    wrong_token_error_msg_handle(
+                    unexpected_token_error_msg(
                         UnexpectedTokenErrorTypes::UNEXPECTEDTOKEN,
                         &match_result.1.text,
                     ),
@@ -221,6 +231,42 @@ impl<'a> Parser<'a> {
                 )));
             }
         };
+    }
+
+    fn func_decl(&mut self) -> Result<Statement, ParsingError> {
+       match self.lexer.match_token(lexer::TokenType::NAME, "") {
+           Ok(token) => {
+               self.error_or_match(lexer::TokenType::LPARENTHESE, "(", UnexpectedTokenErrorTypes::LPARENTHESE)?;
+               let params = self.parse_func_params()?;
+               self.error_or_match(lexer::TokenType::RPARENTHESE, ")", UnexpectedTokenErrorTypes::RPARENTHESE)?;
+               self.error_or_match(lexer::TokenType::LBRACE, "{", UnexpectedTokenErrorTypes::RPARENTHESE)?;
+               
+                let mut body = Vec::new();
+                while !self
+                    .lexer
+                    .try_to_match_token(lexer::TokenType::RBRACE, vec!["}"])
+                    .0
+                {
+                    if self.lexer.is_empty() {
+                        return Err(ParsingError::MissingToken(MissingTokenError::new(
+                            missing_token_error_msg_handle(MissingTokenErrorTypes::RBRACE),
+                        )));
+                    }
+                    body.push(self.statement()?);
+                }
+
+               Ok(Statement::FuncDecl(FuncDeclStmt::new(token.text, params, body)))
+           },
+           Err(token_error) => {
+               Err(ParsingError::UnexpectedToken(
+                       UnexpectedTokenError::new(unexpected_token_error_msg(
+                               UnexpectedTokenErrorTypes::FUNCNAME, &token_error.text),token_error.line, token_error.column)))
+           }
+       }
+    }
+
+    fn parse_func_params(&mut self) -> Result<Vec<String>, ParsingError>{
+        Ok(Vec::new())
     }
 
     fn if_stmt(&mut self) -> Result<Statement, ParsingError> {
@@ -337,7 +383,7 @@ impl<'a> Parser<'a> {
                     }
                     Err(err) => {
                         return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                            wrong_token_error_msg_handle(
+                            unexpected_token_error_msg(
                                 UnexpectedTokenErrorTypes::TYPE,
                                 &err.text,
                             ),
@@ -349,7 +395,7 @@ impl<'a> Parser<'a> {
             }
             Err(err) => {
                 return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                    wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::VARNAME, &err.text),
+                    unexpected_token_error_msg(UnexpectedTokenErrorTypes::VARNAME, &err.text),
                     err.line,
                     err.column,
                 )));
@@ -480,7 +526,7 @@ impl<'a> Parser<'a> {
             return Ok(Expression::Grouping(GroupingExpr::new(expr)));
         } else {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                wrong_token_error_msg_handle(
+                unexpected_token_error_msg(
                     UnexpectedTokenErrorTypes::UNEXPECTEDTOKEN,
                     &match_result.1.text,
                 ),
@@ -510,7 +556,7 @@ impl<'a> Parser<'a> {
     ) -> Result<(), ParsingError> {
         if let Err(err) = self.lexer.match_token(token_type, token_text) {
             return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                wrong_token_error_msg_handle(error_type, &err.text),
+                unexpected_token_error_msg(error_type, &err.text),
                 err.line,
                 err.column,
             )));

@@ -27,7 +27,7 @@ pub enum InternalErrorTypes {
     UNEXPECTEDERROR,
 }
 
-pub fn wrong_token_error_msg_handle(
+pub fn unexpected_token_error_msg(
     error_type: UnexpectedTokenErrorTypes,
     wrong_token: &str,
 ) -> String {
@@ -214,78 +214,78 @@ mod tests {
     // UnexpectedTokenError
     #[test]
     fn func_name_error_msg() {
-        let error_msg = wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::FUNCNAME, "*");
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::FUNCNAME, "*");
         assert_eq!(error_msg, "Expected a function name, found \"*\"")
     }
 
     #[test]
     fn param_name_error_msg() {
-        let error_msg = wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::PARAMNAME, "+");
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::PARAMNAME, "+");
         assert_eq!(error_msg, "Expected a param name, found \"+\"")
     }
 
     #[test]
     fn var_name_error_msg() {
-        let error_msg = wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::VARNAME, ":");
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::VARNAME, ":");
         assert_eq!(error_msg, "Expected a variable name, found \":\"")
     }
 
     #[test]
     fn type_error_msg() {
-        let error_msg = wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::TYPE, "let");
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::TYPE, "let");
         assert_eq!(error_msg, "Expected a type, found \"let\"")
     }
 
     #[test]
     fn colon_error_msg() {
-        let error_msg = wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::COLON, "function");
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::COLON, "function");
         assert_eq!(error_msg, "Expected a \":\", found \"function\"")
     }
 
     #[test]
     fn semicollon_error_msg() {
-        let error_msg = wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::SEMICOLON, ":");
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::SEMICOLON, ":");
         assert_eq!(error_msg, "Expected a \";\", found \":\"")
     }
 
     #[test]
     fn lparenthese_error_msg() {
         let error_msg =
-            wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::LPARENTHESE, "var_name");
+            unexpected_token_error_msg(UnexpectedTokenErrorTypes::LPARENTHESE, "var_name");
         assert_eq!(error_msg, "Expected a \"(\", found \"var_name\"")
     }
 
     #[test]
     fn rparenthese_error_msg() {
         let error_msg =
-            wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::RPARENTHESE, "var_name");
+            unexpected_token_error_msg(UnexpectedTokenErrorTypes::RPARENTHESE, "var_name");
         assert_eq!(error_msg, "Expected a \")\", found \"var_name\"")
     }
 
     #[test]
     fn lbrace_error_msg() {
-        let error_msg = wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::LBRACE, "var_name");
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::LBRACE, "var_name");
         assert_eq!(error_msg, "Expected a \"{\", found \"var_name\"")
     }
 
     #[test]
     fn comma_or_rparenthese_error_msg() {
         let error_msg =
-            wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::COMMAORRPARENTHESE, "var_name");
+            unexpected_token_error_msg(UnexpectedTokenErrorTypes::COMMAORRPARENTHESE, "var_name");
         assert_eq!(error_msg, "Expected a \",\" or a \")\", found \"var_name\"")
     }
 
     #[test]
     fn unexpected_token() {
         let error_msg =
-            wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::UNEXPECTEDTOKEN, "token");
+            unexpected_token_error_msg(UnexpectedTokenErrorTypes::UNEXPECTEDTOKEN, "token");
         assert_eq!(error_msg, "Unexpected token found: \"token\"");
     }
 
     #[test]
     fn unexpected_keyword() {
         let error_msg =
-            wrong_token_error_msg_handle(UnexpectedTokenErrorTypes::UNEXPECTEDKEYWORD, "keyword");
+            unexpected_token_error_msg(UnexpectedTokenErrorTypes::UNEXPECTEDKEYWORD, "keyword");
         assert_eq!(error_msg, "Unexpected keyword found: \"keyword\"");
     }
 
