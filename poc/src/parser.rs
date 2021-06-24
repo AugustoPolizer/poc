@@ -425,7 +425,7 @@ impl<'a> Parser<'a> {
     fn var_decl(&mut self, is_const: bool) -> Result<Statement, ParsingError> {
         match self.lexer.match_token(lexer::TokenType::NAME, "") {
             Ok(token) => {
-                if self.name_exist_in_current_scope(&token.text) {
+                if self.scopes.name_exist_in_current_scope(&token.text) {
                     return Err(ParsingError::ScopeResolution(ScopeResolutionError::new(
                         scope_error_msg_handle(
                             ScopeResolutionErrorTypes::ALREADYDECLARED,
@@ -625,17 +625,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn name_exist_in_current_scope(&self, name: &str) -> bool {
-        if let Some(_) = self.scopes.find_symbol_in_current_scope(name) {
-            return true;
-        } else {
-            if let Some(_) = self.scopes.find_func_decl_in_current_scope(name) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
 
     fn match_or_error(
         &mut self,
@@ -676,6 +665,6 @@ mod tests {
     fn find_name_in_current_scope_empty_scope() {
         let parser = Parser::new("");
 
-        assert_eq!(parser.name_exist_in_current_scope("var_test"), false);
+        assert_eq!(parser.scopes.name_exist_in_current_scope("var_test"), false);
     }
 }

@@ -135,6 +135,18 @@ impl ScopeManager {
 
         Ok(())
     }
+    
+    pub fn name_exist_in_current_scope(&self, name: &str) -> bool {
+        if let Some(_) = self.find_symbol_in_current_scope(name) {
+            return true;
+        } else {
+            if let Some(_) = self.find_func_decl_in_current_scope(name) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
 
     pub fn find_symbol_in_current_scope(&self, name: &str) -> Option<&Symbol> {
         if self.scopes.is_empty() {
