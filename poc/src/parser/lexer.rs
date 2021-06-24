@@ -183,6 +183,15 @@ impl<'a> Lexer<'a> {
         };
     }
 
+    pub fn cosume_until_find(&mut self, token_type: TokenType, token_text: &str) {
+        loop {
+            let token = self.consume_token();
+            if (token.token_type == token_type && token.text == token_text) || self.is_empty() {
+                break;
+            }
+        }
+    }
+
     fn get_token(&mut self) -> Token {
         let mut lookahead = match self.code_iterator.peek() {
             Some(c) => *c,

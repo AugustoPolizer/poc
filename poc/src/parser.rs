@@ -193,7 +193,8 @@ impl<'a> Parser<'a> {
 
     // Cosume tokens until find a statement delimiter
     fn sync(&mut self) {
-        // Panic mode
+        self.lexer
+            .cosume_until_find(lexer::TokenType::SEMICOLON, ";");
     }
 
     fn statement(&mut self) -> Result<Statement, ParsingError> {
