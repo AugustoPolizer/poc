@@ -113,24 +113,25 @@ impl ScopeManager {
         Ok(())
     }
 
-    pub fn create_new_func_decl() {
+    pub fn create_new_func_decl(
         &mut self,
-        
-    }
-
-    pub fn insert_func_decl(
-        &mut self,
-        func_decl: FuncDecl,
-        func_name: String,
-    ) -> Result<(), &'static str> {
+        return_type: Type,
+        func_name: &str,
+        params: Vec<Param>,
+    ) -> Result<(), ParsingError> {
         if self.scopes.is_empty() {
-            return Err("There is no scope to insert function declaration");
+            return Err(ParsingError::Internal(InternalError::new(
+                internal_error_msg_handle(
+                    InternalErrorTypes::UNABLETOINSERTSYMBOL,
+                    "There is no scope to insert the symbol",
+                ),
+            )));
         }
 
-        let last_scope_index = self.scopes.len() - 1;
-        self.scopes[last_scope_index]
+        let idx = self.scopes.len() - 1;
+        self.scopes[idx]
             .function_table
-            .insert(func_name, func_decl);
+            .insert(func_name.to_string(), FuncDecl::new(return_type, params));
 
         Ok(())
     }
@@ -243,10 +244,7 @@ mod tests {
         let mut scope_manager = ScopeManager::new();
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_func_decl(
-            FuncDecl::new(Type::INTEGER, Vec::new()),
-            String::from("test_function"),
-        ) {
+        match scope_manager.create_new_func_decl(Type::INTEGER, "test_function", Vec::new()) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false),
         }
@@ -255,11 +253,7 @@ mod tests {
     #[test]
     fn insert_func_decl_incorrect_use() {
         let mut scope_manager = ScopeManager::new();
-
-        match scope_manager.insert_func_decl(
-            FuncDecl::new(Type::INTEGER, Vec::new()),
-            String::from("test_function"),
-        ) {
+        match scope_manager.create_new_func_decl(Type::INTEGER, "test_function", Vec::new()) {
             Ok(_) => assert!(false),
             Err(_) => assert!(true),
         }
@@ -357,10 +351,7 @@ mod tests {
         let mut scope_manager = ScopeManager::new();
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_func_decl(
-            FuncDecl::new(Type::INTEGER, Vec::new()),
-            String::from("test_function"),
-        ) {
+        match scope_manager.create_new_func_decl(Type::INTEGER, "test_function", Vec::new()) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false),
         }
@@ -376,19 +367,13 @@ mod tests {
         let mut scope_manager = ScopeManager::new();
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_func_decl(
-            FuncDecl::new(Type::INTEGER, Vec::new()),
-            String::from("test_function1"),
-        ) {
+        match scope_manager.create_new_func_decl(Type::INTEGER, "test_function1", Vec::new()) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false),
         }
 
         scope_manager.create_new_scope();
-        match scope_manager.insert_func_decl(
-            FuncDecl::new(Type::FLOAT, Vec::new()),
-            String::from("test_function2"),
-        ) {
+        match scope_manager.create_new_func_decl(Type::FLOAT, "test_function2", Vec::new()) {
             Ok(_) => assert!(true),
             Err(_) => assert!(false),
         }

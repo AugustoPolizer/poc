@@ -100,7 +100,11 @@ struct FuncDeclStmt {
 }
 
 impl FuncDeclStmt {
-    pub fn new(name: String, params: Vec<scope_manager::Param>, body: Vec<Statement>) -> FuncDeclStmt {
+    pub fn new(
+        name: String,
+        params: Vec<scope_manager::Param>,
+        body: Vec<Statement>,
+    ) -> FuncDeclStmt {
         FuncDeclStmt { name, params, body }
     }
 }
@@ -111,11 +115,8 @@ struct FuncCallStmt {
 }
 
 impl FuncCallStmt {
-    pub fn new(name: String, args: Vec<String>) -> FuncCallStmt{
-        FuncCallStmt {
-            name,
-            args
-        }
+    pub fn new(name: String, args: Vec<String>) -> FuncCallStmt {
+        FuncCallStmt { name, args }
     }
 }
 
@@ -285,33 +286,62 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_func_params(&mut self) -> Result<Vec<scope_manager::Param>, ParsingError> {
-        let mut params = Vec::new(); 
-        while !self.lexer.try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"]).0 {
+        let mut params = Vec::new();
+        while !self
+            .lexer
+            .try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"])
+            .0
+        {
             if self.lexer.is_empty() {
                 return Err(ParsingError::MissingToken(MissingTokenError::new(
                     missing_token_error_msg_handle(MissingTokenErrorTypes::RPARENTHESE),
                 )));
             }
-            let is_const = self.lexer.try_to_match_token(lexer::TokenType::KEYWORD, vec!["const"]).0;
-            let param_token = self.match_or_error(lexer::TokenType::NAME, "",  UnexpectedTokenErrorTypes::PARAMNAME)?;
-            self.match_or_error(lexer::TokenType::COLON, ":", UnexpectedTokenErrorTypes::COLON)?;
-            let type_token = self.match_or_error(lexer::TokenType::TYPE, "", UnexpectedTokenErrorTypes::TYPE)?;
-            self.lexer.try_to_match_token(lexer::TokenType::COMMA, vec![]);
-            params.push(scope_manager::Param::new(self.string_to_type(&type_token.text)?, is_const));
+            let is_const = self
+                .lexer
+                .try_to_match_token(lexer::TokenType::KEYWORD, vec!["const"])
+                .0;
+            let param_token = self.match_or_error(
+                lexer::TokenType::NAME,
+                "",
+                UnexpectedTokenErrorTypes::PARAMNAME,
+            )?;
+            self.match_or_error(
+                lexer::TokenType::COLON,
+                ":",
+                UnexpectedTokenErrorTypes::COLON,
+            )?;
+            let type_token =
+                self.match_or_error(lexer::TokenType::TYPE, "", UnexpectedTokenErrorTypes::TYPE)?;
+            self.lexer
+                .try_to_match_token(lexer::TokenType::COMMA, vec![]);
+            params.push(scope_manager::Param::new(
+                self.string_to_type(&type_token.text)?,
+                is_const,
+            ));
         }
         Ok(params)
     }
 
     fn func_call(&mut self, func_name: String) -> Result<Statement, ParsingError> {
-        let mut args = Vec::new();  
-        while !self.lexer.try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"]).0 {
+        let mut args = Vec::new();
+        while !self
+            .lexer
+            .try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"])
+            .0
+        {
             if self.lexer.is_empty() {
                 return Err(ParsingError::MissingToken(MissingTokenError::new(
                     missing_token_error_msg_handle(MissingTokenErrorTypes::RPARENTHESE),
                 )));
             }
-            let arg_token = self.match_or_error(lexer::TokenType::NAME, "",  UnexpectedTokenErrorTypes::ARGNAME)?;
-            self.lexer.try_to_match_token(lexer::TokenType::COMMA, vec![]);
+            let arg_token = self.match_or_error(
+                lexer::TokenType::NAME,
+                "",
+                UnexpectedTokenErrorTypes::ARGNAME,
+            )?;
+            self.lexer
+                .try_to_match_token(lexer::TokenType::COMMA, vec![]);
             args.push(arg_token.text);
         }
 
@@ -612,21 +642,17 @@ impl<'a> Parser<'a> {
         token_text: &str,
         error_type: UnexpectedTokenErrorTypes,
     ) -> Result<lexer::Token, ParsingError> {
-
         match self.lexer.match_token(token_type, token_text) {
             Err(err) => Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
                 unexpected_token_error_msg(error_type, &err.text),
                 err.line,
                 err.column,
             ))),
-            Ok(token) => Ok(token)
+            Ok(token) => Ok(token),
         }
     }
 
-    fn string_to_type(
-        &self,
-        type_string: &str,
-    ) -> Result<scope_manager::Type, ParsingError> {
+    fn string_to_type(&self, type_string: &str) -> Result<scope_manager::Type, ParsingError> {
         match type_string {
             "int" => Ok(scope_manager::Type::INTEGER),
             "float" => Ok(scope_manager::Type::FLOAT),

@@ -17,7 +17,7 @@ pub enum UnexpectedTokenErrorTypes {
 
 pub enum MissingTokenErrorTypes {
     RBRACE,
-    RPARENTHESE
+    RPARENTHESE,
 }
 
 pub enum ScopeResolutionErrorTypes {
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn arg_name_error_msg() {
         let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::ARGNAME, "+");
-        assert_eq!(error_msg, "Expected a function argument found \"+\"")
+        assert_eq!(error_msg, "Expected a function argument, found \"+\"")
     }
     #[test]
     fn var_name_error_msg() {
