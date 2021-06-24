@@ -27,13 +27,28 @@ impl Symbol {
 }
 
 #[derive(Clone)]
+pub struct Param {
+    param_type: Type,
+    is_const: bool,
+}
+
+impl Param {
+    pub fn new(param_type: Type, is_const: bool) -> Param {
+        Param {
+            param_type,
+            is_const,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct FuncDecl {
     return_type: Type,
-    params: Vec<Symbol>,
+    params: Vec<Param>,
 }
 
 impl FuncDecl {
-    pub fn new(return_type: Type, params: Vec<Symbol>) -> FuncDecl {
+    pub fn new(return_type: Type, params: Vec<Param>) -> FuncDecl {
         FuncDecl {
             return_type,
             params,
@@ -96,6 +111,11 @@ impl ScopeManager {
             .insert(symbol_name.to_string(), Symbol::new(symbol_type, is_const));
 
         Ok(())
+    }
+
+    pub fn create_new_func_decl() {
+        &mut self,
+        
     }
 
     pub fn insert_func_decl(

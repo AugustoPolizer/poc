@@ -3,6 +3,7 @@ pub enum UnexpectedTokenErrorTypes {
     FUNCNAME,
     VARNAME,
     PARAMNAME,
+    ARGNAME,
     TYPE,
     COLON,
     SEMICOLON,
@@ -16,6 +17,7 @@ pub enum UnexpectedTokenErrorTypes {
 
 pub enum MissingTokenErrorTypes {
     RBRACE,
+    RPARENTHESE
 }
 
 pub enum ScopeResolutionErrorTypes {
@@ -36,7 +38,10 @@ pub fn unexpected_token_error_msg(
             format!("Expected a function name, found \"{}\"", wrong_token)
         }
         UnexpectedTokenErrorTypes::PARAMNAME => {
-            format!("Expected a param name, found \"{}\"", wrong_token)
+            format!("Expected a function param, found \"{}\"", wrong_token)
+        }
+        UnexpectedTokenErrorTypes::ARGNAME => {
+            format!("Expected a function argument, found \"{}\"", wrong_token)
         }
         UnexpectedTokenErrorTypes::VARNAME => {
             format!("Expected a variable name, found \"{}\"", wrong_token)
@@ -92,6 +97,9 @@ pub fn missing_token_error_msg_handle(error_type: MissingTokenErrorTypes) -> Str
     match error_type {
         MissingTokenErrorTypes::RBRACE => {
             String::from("Sudden end of input. Missing a closing \"}\"")
+        }
+        MissingTokenErrorTypes::RPARENTHESE => {
+            String::from("Sudden end of input. Missing a closing \")\"")
         }
     }
 }
@@ -221,9 +229,14 @@ mod tests {
     #[test]
     fn param_name_error_msg() {
         let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::PARAMNAME, "+");
-        assert_eq!(error_msg, "Expected a param name, found \"+\"")
+        assert_eq!(error_msg, "Expected a function param, found \"+\"")
     }
 
+    #[test]
+    fn arg_name_error_msg() {
+        let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::ARGNAME, "+");
+        assert_eq!(error_msg, "Expected a function argument found \"+\"")
+    }
     #[test]
     fn var_name_error_msg() {
         let error_msg = unexpected_token_error_msg(UnexpectedTokenErrorTypes::VARNAME, ":");
