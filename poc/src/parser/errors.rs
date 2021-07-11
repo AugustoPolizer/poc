@@ -27,6 +27,7 @@ pub enum ScopeResolutionErrorTypes {
 pub enum InternalErrorTypes {
     UNABLETOINSERTSYMBOL,
     UNEXPECTEDERROR,
+    INVALIDSTATE,
 }
 
 pub fn unexpected_token_error_msg(
@@ -88,6 +89,10 @@ pub fn internal_error_msg_handle(error_type: InternalErrorTypes, error: &str) ->
         ),
         InternalErrorTypes::UNEXPECTEDERROR => format!(
             "Internal error: An unexpected error has occurred: {}",
+            error
+        ),
+        InternalErrorTypes::INVALIDSTATE => format!(
+            "Internal error: The parser has entered an invalid state: {}",
             error
         ),
     }

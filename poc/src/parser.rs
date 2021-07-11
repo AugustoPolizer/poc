@@ -8,6 +8,7 @@ use errors::{
     MissingTokenErrorTypes, ParsingError, ScopeResolutionError, ScopeResolutionErrorTypes,
     UnexpectedTokenError, UnexpectedTokenErrorTypes,
 };
+use std::fmt;
 
 enum Expression {
     Binary(BinaryExpr),
@@ -152,15 +153,31 @@ impl AttrStmt {
     }
 }
 
-// Used only as return type of function find_name_in_current_scope
-enum ScopeTypes {
-    Symbol(scope_manager::Symbol),
-    FuncDecl(scope_manager::FuncDecl),
+enum State {
+    Parse,
+    Error(RecoverStrategy),
+    End,
+}
+
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Parse => write!(f, "Parse"),
+            Error => write!(f, "Error"),
+            End => write!(f, "End"),
+        }
+    }
+}
+
+enum RecoverStrategy {
+    SkipUntilDelimiter,
+    SkipCodeBlock,
 }
 
 struct Parser<'a> {
     lexer: lexer::Lexer<'a>,
     scopes: scope_manager::ScopeManager,
+    state: State,
 }
 
 impl<'a> Parser<'a> {
@@ -168,13 +185,17 @@ impl<'a> Parser<'a> {
         Parser {
             lexer: lexer::Lexer::new(code),
             scopes: scope_manager::ScopeManager::new(),
+            state: State::Parse,
         }
     }
 
+    // FIXME Don't generate incorrect errors when encountering an error in a code block
     pub fn parse(&mut self) -> Result<Vec<Statement>, Vec<ParsingError>> {
         let mut ast = Vec::new();
         let mut errors = Vec::new();
 
+        // Init global scope
+        self.scopes.create_new_scope();
         while !self.lexer.is_empty() {
             match self.statement() {
                 Ok(stmt) => ast.push(stmt),
@@ -184,6 +205,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+        self.scopes.remove_scope();
 
         if errors.is_empty() {
             return Ok(ast);
@@ -192,9 +214,24 @@ impl<'a> Parser<'a> {
     }
 
     // Cosume tokens until find a statement delimiter
-    fn sync(&mut self) {
-        self.lexer
-            .cosume_until_find(lexer::TokenType::SEMICOLON, ";");
+    fn sync(&mut self) -> Result<(), ParsingError> {
+        match self.state {
+            State::Error(RecoverStrategy::SkipUntilDelimiter) => {
+                self.lexer
+                    .cosume_until_find(lexer::TokenType::SEMICOLON, ";");
+                Ok(())
+            }
+            State::Error(RecoverStrategy::SkipCodeBlock) => {
+                self.lexer.cosume_until_find(lexer::TokenType::RBRACE, "}");
+                Ok(())
+            }
+            _ => Err(ParsingError::Internal(InternalError::new(
+                internal_error_msg_handle(
+                    InternalErrorTypes::INVALIDSTATE,
+                    format!("{}", self.state),
+                ),
+            ))),
+        }
     }
 
     fn statement(&mut self) -> Result<Statement, ParsingError> {
@@ -484,6 +521,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    //FIXME treat assignments as l-values
     fn attr_stmt(&mut self, var_name: String) -> Result<Statement, ParsingError> {
         let expr = self.expression()?;
         self.match_or_error(
@@ -582,6 +620,7 @@ impl<'a> Parser<'a> {
         self.primary()
     }
 
+    //FIXME Add function call, variable names as valid primary values
     fn primary(&mut self) -> Result<Expression, ParsingError> {
         let mut match_result = self
             .lexer
@@ -625,7 +664,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-
     fn match_or_error(
         &mut self,
         token_type: lexer::TokenType,
@@ -660,11 +698,4 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn find_name_in_current_scope_empty_scope() {
-        let parser = Parser::new("");
-
-        assert_eq!(parser.scopes.name_exist_in_current_scope("var_test"), false);
-    }
 }

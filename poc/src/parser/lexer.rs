@@ -183,6 +183,14 @@ impl<'a> Lexer<'a> {
         };
     }
 
+    /// Consume tokens until find a specific token(delimite) or the end of the token stream
+    ///
+    /// # Arguments
+    ///
+    /// * `token_type` - A TokenType that defines the token type of the delimiter
+    ///
+    /// * `token_text` - A string slice that has the delimiter up to which
+    /// tokens should be consumed
     pub fn cosume_until_find(&mut self, token_type: TokenType, token_text: &str) {
         loop {
             let token = self.consume_token();
