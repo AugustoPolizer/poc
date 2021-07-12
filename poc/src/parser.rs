@@ -20,7 +20,22 @@ enum Expression {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Literal(LiteralExpr),
-    Grouping(GroupingExpr),
+    Grouping(GroupingExpr), 
+    FuncCall(FuncCallExpr),
+}
+
+struct FuncCallExpr {
+    callee: Box<Expression>,
+    args: Vec<Expression>,
+}
+
+impl FuncCallExpr {
+    pub fn new(callee: Expression, args: Vec<Expression>) -> FuncCallExpr {
+        FuncCallExpr { 
+            callee: Box::new(callee), 
+            args
+        }
+    }
 }
 
 struct BinaryExpr {
@@ -78,7 +93,6 @@ impl GroupingExpr {
 enum Statement {
     If(IfStmt),
     FuncDecl(FuncDeclStmt),
-    FuncCall(FuncCallStmt),
     Return(ReturnStmt),
     VarDecl(VarDeclStmt),
     Attr(AttrStmt),
@@ -116,16 +130,6 @@ impl FuncDeclStmt {
     }
 }
 
-struct FuncCallStmt {
-    name: String,
-    args: Vec<String>,
-}
-
-impl FuncCallStmt {
-    pub fn new(name: String, args: Vec<String>) -> FuncCallStmt {
-        FuncCallStmt { name, args }
-    }
-}
 
 struct ReturnStmt {
     expr: Expression,
@@ -344,7 +348,7 @@ impl<'a> Parser<'a> {
             RecoverStrategy::SkipCodeBlock,
         )?;
 
-        let params = self.parse_func_params()?;
+        let params = self.func_params()?;
 
         self.match_or_error(
             lexer::TokenType::RPARENTHESE,
@@ -379,7 +383,7 @@ impl<'a> Parser<'a> {
     }
 
     // FIXME: Parse the function retorn type
-    fn parse_func_params(&mut self) -> Result<Vec<scope_manager::Param>, ParsingError> {
+    fn func_params(&mut self) -> Result<Vec<scope_manager::Param>, ParsingError> {
         let mut params = Vec::new();
         while let None = self
             .lexer
@@ -428,31 +432,6 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    fn func_call(&mut self, func_name: String) -> Result<Statement, ParsingError> {
-        let mut args = Vec::new();
-        while let None = self
-            .lexer
-            .try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"])
-        {
-            if self.lexer.is_empty() {
-                self.state = State::Error(RecoverStrategy::SkipSync);
-                return Err(ParsingError::MissingToken(MissingTokenError::new(
-                    missing_token_error_msg_handle(MissingTokenErrorTypes::RPARENTHESE),
-                )));
-            }
-            let arg_token = self.match_or_error(
-                lexer::TokenType::NAME,
-                "",
-                UnexpectedTokenErrorTypes::ARGNAME,
-                RecoverStrategy::SkipUntilDelimiter,
-            )?;
-            self.lexer
-                .try_to_match_token(lexer::TokenType::COMMA, vec![]);
-            args.push(arg_token.text);
-        }
-
-        Ok(Statement::FuncCall(FuncCallStmt::new(func_name, args)))
-    }
 
     fn if_stmt(&mut self) -> Result<Statement, ParsingError> {
         self.match_or_error(
@@ -667,10 +646,43 @@ impl<'a> Parser<'a> {
             return Ok(Expression::Unary(UnaryExpr::new(right, match_result.text)));
         }
 
-        self.primary()
+        self.func_call()
     }
 
-    //FIXME Add function call, variable names as valid primary values
+    fn func_call(&mut self) -> Result<Expression, ParsingError> {
+        let mut expr = self.primary()?;  
+
+        while let None = self
+            .lexer
+            .try_to_match_token(lexer::TokenType::LPARENTHESE, vec!["("])
+        {
+            expr = self.func_arguments(expr)?;
+        }
+
+        Ok(expr)
+    }
+
+    fn func_arguments(&mut self, callee: Expression) -> Result<Expression, ParsingError> {
+        let mut arguments = Vec::new();
+        if let None = self
+            .lexer
+            .try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"]) {
+                loop {
+                    arguments.push(self.expression()?);
+                    if let None = self.lexer.try_to_match_token(lexer::TokenType::COMMA, vec![","]) { break; }
+                }
+        }
+
+        self.match_or_error(
+            lexer::TokenType::RPARENTHESE, 
+            ")", 
+            UnexpectedTokenErrorTypes::RPARENTHESE, 
+            RecoverStrategy::SkipUntilDelimiter)?;
+
+        Ok(Expression::FuncCall(FuncCallExpr::new(callee, arguments)))
+
+    }
+
     fn primary(&mut self) -> Result<Expression, ParsingError> {
         if let Some(match_result) = self
             .lexer
@@ -693,7 +705,14 @@ impl<'a> Parser<'a> {
 
         if let Some(match_result) = self
             .lexer
-            .try_to_match_token(lexer::TokenType::LPARENTHESE, vec![])
+            .try_to_match_token(lexer::TokenType::NAME, vec![])
+        {
+            return Ok(Expression::Literal(LiteralExpr::new(match_result.text)));
+        }
+
+        if let Some(match_result) = self
+            .lexer
+            .try_to_match_token(lexer::TokenType::LPARENTHESE, vec!["("])
         {
             let expr = self.expression()?;
 
