@@ -479,11 +479,11 @@ mod tests {
         lexer: &mut Lexer,
         options: Vec<&str>,
         token_type: TokenType,
-        expected_result: (bool, &str),
+        expected_result: &str,
     ) {
-        let match_result = lexer.try_to_match_token(token_type, options);
-        assert_eq!(match_result.0, expected_result.0);
-        assert_eq!(match_result.1.text, expected_result.1);
+        let match_result = lexer.try_to_match_token(token_type, options).
+            unwrap_or(Token::new(TokenType::UNKNOWN, String::from(""), 0, 0));
+        assert_eq!(match_result.text, expected_result);
     }
 
     fn assert_token_equal_match(
@@ -730,26 +730,26 @@ mod tests {
             let a: int = 10; 
         ";
         let mut lexer: Lexer = Lexer::new(&code);
-        assert_token_equal_try_match(&mut lexer, vec!["let"], TokenType::KEYWORD, (true, "let"));
+        assert_token_equal_try_match(&mut lexer, vec!["let"], TokenType::KEYWORD,"let");
         assert_token_equal_try_match(
             &mut lexer,
             vec!["let", "const", "int"],
             TokenType::KEYWORD,
-            (false, ""),
+            "",
         );
-        assert_token_equal_try_match(&mut lexer, vec!["test"], TokenType::NAME, (false, ""));
-        assert_token_equal_try_match(&mut lexer, vec![], TokenType::NAME, (true, "a"));
-        assert_token_equal_try_match(&mut lexer, vec![";", ":"], TokenType::COLON, (true, ":"));
+        assert_token_equal_try_match(&mut lexer, vec!["test"], TokenType::NAME,  "");
+        assert_token_equal_try_match(&mut lexer, vec![], TokenType::NAME, "a");
+        assert_token_equal_try_match(&mut lexer, vec![";", ":"], TokenType::COLON, ":");
         assert_token_equal_try_match(
             &mut lexer,
             vec!["int", "float"],
             TokenType::TYPE,
-            (true, "int"),
+            "int",
         );
-        assert_token_equal_try_match(&mut lexer, vec!["="], TokenType::ATTR, (true, "="));
-        assert_token_equal_try_match(&mut lexer, vec!["10"], TokenType::INTEGER, (true, "10"));
-        assert_token_equal_try_match(&mut lexer, vec![";"], TokenType::SEMICOLON, (true, ";"));
-        assert_token_equal_try_match(&mut lexer, vec!["EOF"], TokenType::EOF, (true, "EOF"));
+        assert_token_equal_try_match(&mut lexer, vec!["="], TokenType::ATTR, "=");
+        assert_token_equal_try_match(&mut lexer, vec!["10"], TokenType::INTEGER, "10");
+        assert_token_equal_try_match(&mut lexer, vec![";"], TokenType::SEMICOLON, ";");
+        assert_token_equal_try_match(&mut lexer, vec!["EOF"], TokenType::EOF,"EOF");
     }
 
     #[test]

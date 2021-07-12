@@ -224,7 +224,7 @@ impl<'a> Parser<'a> {
                             errors.push(ParsingError::Internal(InternalError::new(
                                 internal_error_msg_handle(
                                     InternalErrorTypes::INVALIDSTATE,
-                                    format!("{}", self.state),
+                                    format!("{}", self.state).as_str(),
                                 ),
                             )));
                             return Err(errors);
@@ -272,7 +272,7 @@ impl<'a> Parser<'a> {
                 Err(ParsingError::Internal(InternalError::new(
                     internal_error_msg_handle(
                         InternalErrorTypes::INVALIDSTATE,
-                        format!("{}", self.state),
+                        format!("{}", self.state).as_str(),
                     ),
                 )))
             }
@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
                     return Err(ParsingError::Internal(InternalError::new(
                         internal_error_msg_handle(
                             InternalErrorTypes::LEXERINVALIDTOKENVALUE,
-                            format!("Found token {} as TokenType KEYWORD", match_result.text),
+                            format!("Found token {} as TokenType KEYWORD", match_result.text).as_str(),
                         ),
                     )));
                 }
