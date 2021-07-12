@@ -42,7 +42,6 @@ pub struct Token {
     pub column: u32,
 }
 
-
 impl Token {
     pub fn new(token_type: TokenType, text: String, line: u32, column: u32) -> Token {
         Token {
@@ -75,7 +74,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-
     pub fn get_first_token(&mut self) -> Token {
         match self.peeked_tokens.pop_front() {
             Some(t) => t,
@@ -103,7 +101,7 @@ impl<'a> Lexer<'a> {
                     for text in token_text_options {
                         if text == token_clone.text {
                             self.consume_token();
-                            return Some(token_clone)
+                            return Some(token_clone);
                         }
                     }
                     return None;
@@ -117,7 +115,7 @@ impl<'a> Lexer<'a> {
                     let token_clone = token.clone();
                     if token_text_options.is_empty() {
                         self.consume_token();
-                        return Some(token_clone)
+                        return Some(token_clone);
                     }
                     for text in token_text_options {
                         if text == token_clone.text {
@@ -196,7 +194,6 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    
     fn peek_token(&mut self) -> Token {
         let token = self.get_token();
         self.peeked_tokens.push_back(token.clone());

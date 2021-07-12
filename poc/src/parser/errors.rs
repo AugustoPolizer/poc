@@ -28,7 +28,7 @@ pub enum InternalErrorTypes {
     UNABLETOINSERTSYMBOL,
     UNEXPECTEDERROR,
     INVALIDSTATE,
-    LEXERINVALIDTOKENVALUE
+    LEXERINVALIDTOKENVALUE,
 }
 
 pub fn unexpected_token_error_msg(
@@ -96,9 +96,9 @@ pub fn internal_error_msg_handle(error_type: InternalErrorTypes, error: &str) ->
             "Internal error: The parser has entered an invalid state: {}",
             error
         ),
-        InternalErrorTypes::LEXERINVALIDTOKENVALUE => format!(
-            "Internal error: Found a invalid token value: {}",
-            error)
+        InternalErrorTypes::LEXERINVALIDTOKENVALUE => {
+            format!("Internal error: Found a invalid token value: {}", error)
+        }
     }
 }
 
