@@ -42,6 +42,7 @@ pub struct Token {
     pub column: u32,
 }
 
+
 impl Token {
     pub fn new(token_type: TokenType, text: String, line: u32, column: u32) -> Token {
         Token {
@@ -56,6 +57,15 @@ impl Token {
 impl std::cmp::PartialEq for Token {
     fn eq(&self, other: &Self) -> bool {
         self.text == other.text && self.token_type == other.token_type
+    }
+}
+
+impl MatchResult {
+    pub fn new(isMatch: bool, token: Option<Token>) -> MatchResult {
+        MatchResult {
+            isMatch,
+            token
+        }
     }
 }
 
@@ -74,19 +84,12 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn consume_token(&mut self) -> Token {
-        let token = match self.peeked_tokens.pop_front() {
+
+    pub fn get_first_token(&mut self) -> Token {
+        match self.peeked_tokens.pop_front() {
             Some(t) => t,
-            None => self.get_token(),
-        };
-        token
-    }
-
-    fn peek_token(&mut self) -> Token {
-        let token = self.get_token();
-        self.peeked_tokens.push_back(token.clone());
-
-        token
+            None => self.peek_token(),
+        }
     }
 
     pub fn is_empty(&mut self) -> bool {
@@ -97,30 +100,24 @@ impl<'a> Lexer<'a> {
         &mut self,
         token_type: TokenType,
         token_text_options: Vec<&str>,
-    ) -> (bool, Token) {
+    ) -> Option<Token> {
         match self.peeked_tokens.front() {
             Some(token) => {
                 let token_clone = token.clone();
                 if token_clone.token_type == token_type {
                     if token_text_options.is_empty() {
                         self.consume_token();
-                        return (true, token_clone);
+                        return Some(token_clone);
                     }
                     for text in token_text_options {
                         if text == token_clone.text {
                             self.consume_token();
-                            return (true, token_clone);
+                            return Some(token_clone)
                         }
                     }
-                    return (
-                        false,
-                        Token::new(TokenType::UNKNOWN, String::from(""), 0, 0),
-                    );
+                    return None;
                 } else {
-                    return (
-                        false,
-                        Token::new(TokenType::UNKNOWN, String::from(""), 0, 0),
-                    );
+                    return None;
                 }
             }
             None => {
@@ -129,17 +126,17 @@ impl<'a> Lexer<'a> {
                     let token_clone = token.clone();
                     if token_text_options.is_empty() {
                         self.consume_token();
-                        return (true, token_clone);
+                        return Some(token_clone)
                     }
                     for text in token_text_options {
                         if text == token_clone.text {
                             self.consume_token();
-                            return (true, token_clone);
+                            return Some(token_clone);
                         }
                     }
-                    return (false, Token::new(TokenType::EOF, String::from(""), 0, 0));
+                    return None;
                 } else {
-                    return (false, Token::new(TokenType::EOF, String::from(""), 0, 0));
+                    return None;
                 }
             }
         };
@@ -198,6 +195,22 @@ impl<'a> Lexer<'a> {
                 break;
             }
         }
+    }
+
+    fn consume_token(&mut self) -> Token {
+        let token = match self.peeked_tokens.pop_front() {
+            Some(t) => t,
+            None => self.get_token(),
+        };
+        token
+    }
+
+    
+    fn peek_token(&mut self) -> Token {
+        let token = self.get_token();
+        self.peeked_tokens.push_back(token.clone());
+
+        token
     }
 
     fn get_token(&mut self) -> Token {
