@@ -13,7 +13,7 @@ use std::fmt;
 
 enum Declaration {
     Expr(Expression),
-    Stmt(Statement)
+    Stmt(Statement),
 }
 
 enum Expression {
@@ -180,6 +180,7 @@ enum RecoverStrategy {
     SkipUntilDelimiter,
     SkipUntilRParentheses,
     SkipCodeBlock,
+    SkipCodeBlockIf,
     SkipSync,
 }
 
@@ -252,6 +253,14 @@ impl<'a> Parser<'a> {
                 self.lexer.consume_until_find(lexer::TokenType::RBRACE, "}");
                 Ok(())
             }
+            State::Error(RecoverStrategy::SkipCodeBlockIf) => {
+                self.lexer.consume_until_find(lexer::TokenType::RBRACE, "}");
+                let next_token = self.lexer.get_first_token();
+                if next_token.token_type == lexer::TokenType::KEYWORD && next_token.text == "else" {
+                    self.lexer.consume_until_find(lexer::TokenType::RBRACE, "}");
+                }
+                Ok(())
+            }
             State::Error(RecoverStrategy::SkipUntilRParentheses) => {
                 self.lexer
                     .consume_until_find(lexer::TokenType::RPARENTHESE, ")");
@@ -271,38 +280,54 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration(&mut self) -> Result<Declaration, ParsingError> {
-        let mut match_result = self.lexer.try_to_match_token(
-            lexer::TokenType::KEYWORD,
-            vec!["function", "let", "const", "if", "return"],
-        );
-
-        if let Some(token) = match_result {
-            Ok(Declaration::Stmt(self.statement(&token.text)?))
+        let token = self.lexer.get_first_token();
+        if token.token_type == lexer::TokenType::KEYWORD {
+            Ok(Declaration::Stmt(self.statement()?))
         } else {
             Ok(Declaration::Expr(self.expression()?))
         }
     }
 
-    fn statement(&mut self, token_text: &str) -> Result<Statement, ParsingError> {
-        match token_text {
-            "if" => self.if_stmt(),
-            "return" => self.return_stmt(),
-            "let" => self.var_decl(false),
-            "const" => self.var_decl(true),
-            "function" => self.func_decl(),
-            _ => {
-                self.state = State::FatalError;
-                return Err(ParsingError::Internal(InternalError::new(
-                            internal_error_msg_handle(
-                                InternalErrorTypes::LEXERINVALIDTOKENVALUE,
-                                format!("Found token {} as TokenType KEYWORD", token_text),
-                                ),
-                                )));
+    fn statement(&mut self) -> Result<Statement, ParsingError> {
+        if let Some(match_result) = self.lexer.try_to_match_token(
+            lexer::TokenType::KEYWORD,
+            vec!["function", "let", "const", "if", "else", "return"],
+        ) {
+            match match_result.text.as_str() {
+                "if" => self.if_stmt(),
+                "return" => self.return_stmt(),
+                "let" => self.var_decl(false),
+                "const" => self.var_decl(true),
+                "function" => self.func_decl(),
+                "else" => {
+                    return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
+                        unexpected_token_error_msg(
+                            UnexpectedTokenErrorTypes::ELSE,
+                            &match_result.text,
+                        ),
+                        match_result.line,
+                        match_result.column,
+                    )));
+                }
+                _ => {
+                    self.state = State::FatalError;
+                    return Err(ParsingError::Internal(InternalError::new(
+                        internal_error_msg_handle(
+                            InternalErrorTypes::LEXERINVALIDTOKENVALUE,
+                            format!("Found token {} as TokenType KEYWORD", match_result.text),
+                        ),
+                    )));
+                }
             }
+        } else {
+            return Err(ParsingError::Internal(InternalError::new(
+                internal_error_msg_handle(
+                    InternalErrorTypes::UNEXPECTEDERROR,
+                    "Error in lexer internal state",
+                ),
+            )));
         }
     }
-
-
 
     fn func_decl(&mut self) -> Result<Statement, ParsingError> {
         let token = self.match_or_error(
@@ -348,7 +373,9 @@ impl<'a> Parser<'a> {
             body.push(self.statement()?);
         }
 
-        Ok(Statement::FuncDecl(FuncDeclStmt::new(token.text, params, body)))
+        Ok(Statement::FuncDecl(FuncDeclStmt::new(
+            token.text, params, body,
+        )))
     }
 
     // FIXME: Parse the function retorn type

@@ -13,6 +13,7 @@ pub enum UnexpectedTokenErrorTypes {
     COMMAORRPARENTHESE,
     UNEXPECTEDKEYWORD,
     UNEXPECTEDTOKEN,
+    ELSE,
 }
 
 pub enum MissingTokenErrorTypes {
@@ -70,6 +71,12 @@ pub fn unexpected_token_error_msg(
         }
         UnexpectedTokenErrorTypes::UNEXPECTEDTOKEN => {
             format!("Unexpected token found: \"{}\"", wrong_token)
+        }
+        UnexpectedTokenErrorTypes::ELSE => {
+            format!(
+                "Unexpected else statement, missing an if statement: \"{}\"",
+                wrong_token
+            )
         }
     }
 }
