@@ -172,8 +172,9 @@ impl fmt::Display for State {
 
 enum RecoverStrategy {
     SkipUntilDelimiter,
+    SkipUntilRParentheses, 
     SkipCodeBlock,
-    SkipSync
+    SkipSync,
 }
 
 struct Parser<'a> {
@@ -235,13 +236,17 @@ impl<'a> Parser<'a> {
         match self.state {
             State::Error(RecoverStrategy::SkipUntilDelimiter) => {
                 self.lexer
-                    .cosume_until_find(lexer::TokenType::SEMICOLON, ";");
+                    .consume_until_find(lexer::TokenType::SEMICOLON, ";");
                 Ok(())
             },
             State::Error(RecoverStrategy::SkipCodeBlock) => {
-                self.lexer.cosume_until_find(lexer::TokenType::RBRACE, "}");
+                self.lexer.consume_until_find(lexer::TokenType::RBRACE, "}");
                 Ok(())
             },
+            State::Error(RecoverStrategy::SkipUntilRParentheses) => {
+                self.lexer.consume_until_find(lexer::TokenType::RPARENTHESE, ")");
+                Ok(())
+            }
             State::Error(RecoverStrategy::SkipSync) => Ok(()),
             _ => {
                 self.state = State::FatalError;
@@ -284,46 +289,48 @@ impl<'a> Parser<'a> {
     }
 
     fn func_decl(&mut self) -> Result<Statement, ParsingError> {
-        match self.lexer.match_token(lexer::TokenType::NAME, "") {
-            Ok(token) => {
-                self.match_or_error(
-                    lexer::TokenType::LPARENTHESE,
-                    "(",
-                    UnexpectedTokenErrorTypes::LPARENTHESE,
-                )?;
-                let params = self.parse_func_params()?;
-                self.match_or_error(
-                    lexer::TokenType::RPARENTHESE,
-                    ")",
-                    UnexpectedTokenErrorTypes::RPARENTHESE,
-                )?;
-                self.match_or_error(
-                    lexer::TokenType::LBRACE,
-                    "{",
-                    UnexpectedTokenErrorTypes::RPARENTHESE,
-                )?;
+        let token = self.match_or_error(
+            lexer::TokenType::NAME,
+            "",
+            UnexpectedTokenErrorTypes::FUNCNAME,
+            RecoverStrategy::SkipCodeBlock)?;
 
-                let mut body = Vec::new();
-                while let None = self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]) {
-                    if self.lexer.is_empty() {
-                        self.state = State::Error(RecoverStrategy::SkipSync);
-                        return Err(ParsingError::MissingToken(MissingTokenError::new(
-                            missing_token_error_msg_handle(MissingTokenErrorTypes::RBRACE),
-                        )));
-                    }
-                    body.push(self.statement()?);
-                }
+        self.match_or_error(
+            lexer::TokenType::LPARENTHESE,
+            "(",
+            UnexpectedTokenErrorTypes::LPARENTHESE,
+            RecoverStrategy::SkipCodeBlock
+        )?;
 
-                Ok(Statement::FuncDecl(FuncDeclStmt::new(
-                    token.text, params, body,
-                )))
+        let params = self.parse_func_params()?;
+
+        self.match_or_error(
+            lexer::TokenType::RPARENTHESE,
+            ")",
+            UnexpectedTokenErrorTypes::RPARENTHESE,
+            RecoverStrategy::SkipCodeBlock
+        )?;
+        self.match_or_error(
+            lexer::TokenType::LBRACE,
+            "{",
+            UnexpectedTokenErrorTypes::RPARENTHESE,
+            RecoverStrategy::SkipCodeBlock
+        )?;
+
+        let mut body = Vec::new();
+        while let None = self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]) {
+            if self.lexer.is_empty() {
+                self.state = State::Error(RecoverStrategy::SkipSync);
+                return Err(ParsingError::MissingToken(MissingTokenError::new(
+                    missing_token_error_msg_handle(MissingTokenErrorTypes::RBRACE),
+                )));
             }
-            Err(token_error) => Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                unexpected_token_error_msg(UnexpectedTokenErrorTypes::FUNCNAME, &token_error.text),
-                token_error.line,
-                token_error.column,
-            ))),
+            body.push(self.statement()?);
         }
+
+        Ok(Statement::FuncDecl(FuncDeclStmt::new(
+            token.text, params, body,
+        )))
     }
 
     // FIXME: Parse the function retorn type
@@ -331,6 +338,7 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         while let None = self.lexer.try_to_match_token(lexer::TokenType::RPARENTHESE, vec![")"]) {
             if self.lexer.is_empty() {
+                self.state = State::Error(RecoverStrategy::SkipSync);
                 return Err(ParsingError::MissingToken(MissingTokenError::new(
                     missing_token_error_msg_handle(MissingTokenErrorTypes::RPARENTHESE),
                 )));
@@ -344,13 +352,19 @@ impl<'a> Parser<'a> {
                 lexer::TokenType::NAME,
                 "",
                 UnexpectedTokenErrorTypes::PARAMNAME,
+                RecoverStrategy::SkipCodeBlock
             )?;
             self.match_or_error(
                 lexer::TokenType::COLON,
                 ":",
                 UnexpectedTokenErrorTypes::COLON,
+                RecoverStrategy::SkipCodeBlock
             )?;
-            let type_token = self.match_or_error(lexer::TokenType::TYPE, "", UnexpectedTokenErrorTypes::TYPE)?;
+            let type_token = self.match_or_error(
+                lexer::TokenType::TYPE,
+                "",
+                UnexpectedTokenErrorTypes::TYPE,
+                RecoverStrategy::SkipCodeBlock)?;
             
             self.lexer.try_to_match_token(lexer::TokenType::COMMA, vec![","]);
             params.push(scope_manager::Param::new(
@@ -374,6 +388,7 @@ impl<'a> Parser<'a> {
                 lexer::TokenType::NAME,
                 "",
                 UnexpectedTokenErrorTypes::ARGNAME,
+                RecoverStrategy::SkipUntilDelimiter
             )?;
             self.lexer
                 .try_to_match_token(lexer::TokenType::COMMA, vec![]);
@@ -388,6 +403,7 @@ impl<'a> Parser<'a> {
             lexer::TokenType::LPARENTHESE,
             "(",
             UnexpectedTokenErrorTypes::LPARENTHESE,
+            RecoverStrategy::SkipCodeBlock
         )?;
 
         let expr = self.expression()?;
@@ -396,16 +412,19 @@ impl<'a> Parser<'a> {
             lexer::TokenType::RPARENTHESE,
             ")",
             UnexpectedTokenErrorTypes::RPARENTHESE,
+            RecoverStrategy::SkipCodeBlock
         )?;
         self.match_or_error(
             lexer::TokenType::LBRACE,
             "{",
             UnexpectedTokenErrorTypes::LBRACE,
+            RecoverStrategy::SkipCodeBlock
         )?;
 
         let mut if_stmts = Vec::new();
         while let None = self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]) {
             if self.lexer.is_empty() {
+                self.state = State::Error(RecoverStrategy::SkipSync);
                 return Err(ParsingError::MissingToken(MissingTokenError::new(
                     missing_token_error_msg_handle(MissingTokenErrorTypes::RBRACE),
                 )));
@@ -421,10 +440,11 @@ impl<'a> Parser<'a> {
                 lexer::TokenType::LBRACE,
                 "{",
                 UnexpectedTokenErrorTypes::LBRACE,
+                RecoverStrategy::SkipCodeBlock
             )?;
             while let None = self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]) {
-                if let Some(_) = self.lexer.try_to_match_token(lexer::TokenType::RBRACE, vec!["}"]) { break; }
                 if self.lexer.is_empty() {
+                    self.state = State::Error(RecoverStrategy::SkipSync);
                     return Err(ParsingError::MissingToken(MissingTokenError::new(
                         missing_token_error_msg_handle(MissingTokenErrorTypes::RBRACE),
                     )));
@@ -441,69 +461,64 @@ impl<'a> Parser<'a> {
             lexer::TokenType::SEMICOLON,
             ";",
             UnexpectedTokenErrorTypes::SEMICOLON,
+            RecoverStrategy::SkipUntilDelimiter
         )?;
         Ok(Statement::Return(ReturnStmt::new(expr)))
     }
 
     fn var_decl(&mut self, is_const: bool) -> Result<Statement, ParsingError> {
-        match self.lexer.match_token(lexer::TokenType::NAME, "") {
-            Ok(token) => {
-                if self.scopes.name_exist_in_current_scope(&token.text) {
-                    return Err(ParsingError::ScopeResolution(ScopeResolutionError::new(
-                        scope_error_msg_handle(
-                            ScopeResolutionErrorTypes::ALREADYDECLARED,
-                            &token.text,
-                        ),
-                        token.line,
-                        token.column,
-                    )));
-                }
+        let token = self.match_or_error(
+            lexer::TokenType::NAME,
+            "",
+            UnexpectedTokenErrorTypes::VARNAME,
+            RecoverStrategy::SkipUntilDelimiter)?;
 
-                self.match_or_error(
-                    lexer::TokenType::COLON,
-                    ":",
-                    UnexpectedTokenErrorTypes::COLON,
-                )?;
+        if self.scopes.name_exist_in_current_scope(&token.text) {
+            self.state = State::Error(RecoverStrategy::SkipUntilDelimiter);
+            return Err(ParsingError::ScopeResolution(ScopeResolutionError::new(
+                scope_error_msg_handle(
+                    ScopeResolutionErrorTypes::ALREADYDECLARED,
+                    &token.text,
+                ),
+                token.line,
+                token.column,
+            )));
+        }
 
-                match self.lexer.match_token(lexer::TokenType::TYPE, "") {
-                    Ok(token_type) => {
-                        self.scopes.create_new_symbol(
-                            self.string_to_type(&token_type.text)?,
-                            &token.text,
-                            is_const,
-                        )?;
-                        // var optional initialization
-                        let mut expr = None;
-                        if let Some(_) = self
-                            .lexer
-                            .try_to_match_token(lexer::TokenType::ATTR, vec!["="])
-                        {
-                            expr = Some(self.expression()?);
-                        }
+        self.match_or_error(
+            lexer::TokenType::COLON,
+            ":",
+            UnexpectedTokenErrorTypes::COLON,
+            RecoverStrategy::SkipUntilDelimiter
+        )?;
 
-                        self.match_or_error(
-                            lexer::TokenType::SEMICOLON,
-                            ";",
-                            UnexpectedTokenErrorTypes::SEMICOLON,
-                        )?;
-                        Ok(Statement::VarDecl(VarDeclStmt::new(token.text, expr)))
-                    }
-                    Err(err) => {
-                        return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                            unexpected_token_error_msg(UnexpectedTokenErrorTypes::TYPE, &err.text),
-                            err.line,
-                            err.column,
-                        )));
-                    }
-                }
-            }
-            Err(err) => {
-                return Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
-                    unexpected_token_error_msg(UnexpectedTokenErrorTypes::VARNAME, &err.text),
-                    err.line,
-                    err.column,
-                )));
-            }
+        let token_type = self.match_or_error(
+            lexer::TokenType::TYPE, 
+            "", 
+            UnexpectedTokenErrorTypes::TYPE, 
+            RecoverStrategy::SkipUntilDelimiter)?;
+
+        self.scopes.create_new_symbol(
+            self.string_to_type(&token_type.text)?,
+            &token.text,
+            is_const,
+        )?;
+        // var optional initialization
+        let mut expr = None;
+        if let Some(_) = self
+            .lexer
+            .try_to_match_token(lexer::TokenType::ATTR, vec!["="])
+        {
+            expr = Some(self.expression()?);
+        }
+
+        self.match_or_error(
+            lexer::TokenType::SEMICOLON,
+            ";",
+            UnexpectedTokenErrorTypes::SEMICOLON,
+            RecoverStrategy::SkipUntilDelimiter
+        )?;
+        Ok(Statement::VarDecl(VarDeclStmt::new(token.text, expr)))
         }
     }
 
@@ -514,6 +529,7 @@ impl<'a> Parser<'a> {
             lexer::TokenType::SEMICOLON,
             ";",
             UnexpectedTokenErrorTypes::SEMICOLON,
+            RecoverStrategy::SkipUntilDelimiter
         )?;
         Ok(Statement::Attr(AttrStmt::new(var_name, expr)))
     }
@@ -598,6 +614,7 @@ impl<'a> Parser<'a> {
                 lexer::TokenType::RPARENTHESE,
                 ")",
                 UnexpectedTokenErrorTypes::RPARENTHESE,
+                RecoverStrategy::SkipUntilDelimiter
             )?;
             return Ok(Expression::Grouping(GroupingExpr::new(expr)));
         } else {
@@ -620,10 +637,11 @@ impl<'a> Parser<'a> {
         token_type: lexer::TokenType,
         token_text: &str,
         error_type: UnexpectedTokenErrorTypes,
+        recovery_strategy: RecoverStrategy
     ) -> Result<lexer::Token, ParsingError> { 
         match self.lexer.match_token(token_type, token_text) {
             Err(err) => {
-                self.state = State::Error(RecoverStrategy::SkipUntilDelimiter);
+                self.state = State::Error(recovery_strategy);
                 Err(ParsingError::UnexpectedToken(UnexpectedTokenError::new(
                 unexpected_token_error_msg(error_type, &err.text),
                 err.line,

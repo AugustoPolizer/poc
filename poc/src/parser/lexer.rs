@@ -60,15 +60,6 @@ impl std::cmp::PartialEq for Token {
     }
 }
 
-impl MatchResult {
-    pub fn new(isMatch: bool, token: Option<Token>) -> MatchResult {
-        MatchResult {
-            isMatch,
-            token
-        }
-    }
-}
-
 impl<'a> Lexer<'a> {
     pub fn new(raw_code: &'a str) -> Lexer<'a> {
         Lexer {
@@ -188,7 +179,7 @@ impl<'a> Lexer<'a> {
     ///
     /// * `token_text` - A string slice that has the delimiter up to which
     /// tokens should be consumed
-    pub fn cosume_until_find(&mut self, token_type: TokenType, token_text: &str) {
+    pub fn consume_until_find(&mut self, token_type: TokenType, token_text: &str) {
         loop {
             let token = self.consume_token();
             if (token.token_type == token_type && token.text == token_text) || self.is_empty() {
