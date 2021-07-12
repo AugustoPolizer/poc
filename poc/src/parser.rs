@@ -326,7 +326,7 @@ impl<'a> Parser<'a> {
             return Err(ParsingError::Internal(InternalError::new(
                 internal_error_msg_handle(
                     InternalErrorTypes::UNEXPECTEDERROR,
-                    "Error in lexer internal state",
+                    format!("Error in lexer internal state: {}", self.lexer.get_first_token().text).as_str(),
                 ),
             )));
         }
@@ -775,4 +775,35 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn empty_program() {
+       let code = r"";
+
+        let mut parser = Parser::new(code);
+        match parser.parse() {
+            Ok(_) => assert!(true),
+            Err(error) => { 
+                println!("{:?}", error);
+                assert!(false) 
+            }
+        }
+        
+    } 
+
+    #[test]
+    fn very_simple_program() {
+       let code = r"
+const a:int;";
+
+        let mut parser = Parser::new(code);
+        match parser.parse() {
+            Ok(_) => assert!(true),
+            Err(error) => { 
+                println!("{:?}", error);
+                assert!(false) 
+            }
+        }
+        
+    } 
 }

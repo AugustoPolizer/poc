@@ -120,6 +120,7 @@ pub fn missing_token_error_msg_handle(error_type: MissingTokenErrorTypes) -> Str
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum ParsingError {
     UnexpectedToken(UnexpectedTokenError),
     ScopeResolution(ScopeResolutionError),
