@@ -245,7 +245,6 @@ impl<'a> Parser<'a> {
         Err(errors)
     }
 
-    // Cosume tokens until find a statement delimiter
     fn sync(&mut self) -> Result<(), ParsingError> {
         match self.state {
             State::Error(RecoverStrategy::SkipUntilDelimiter) => {
