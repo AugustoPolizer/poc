@@ -8,7 +8,13 @@ use errors::{
     MissingTokenErrorTypes, ParsingError, ScopeResolutionError, ScopeResolutionErrorTypes,
     UnexpectedTokenError, UnexpectedTokenErrorTypes,
 };
+
 use std::fmt;
+
+enum Declaration {
+    Expr(Expression),
+    Stmt(Statement)
+}
 
 enum Expression {
     Binary(BinaryExpr),
@@ -192,15 +198,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Statement>, Vec<ParsingError>> {
+    pub fn parse(&mut self) -> Result<Vec<Declaration>, Vec<ParsingError>> {
         let mut ast = Vec::new();
         let mut errors = Vec::new();
 
         // Init global scope
         self.scopes.create_new_scope();
         while !self.lexer.is_empty() {
-            match self.statement() {
-                Ok(stmt) => ast.push(stmt),
+            match self.declaration() {
+                Ok(decl) => ast.push(decl),
                 Err(error) => {
                     errors.push(error);
                     match self.state {
@@ -264,32 +270,39 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn statement(&mut self) -> Result<Statement, ParsingError> {
+    fn declaration(&mut self) -> Result<Declaration, ParsingError> {
         let mut match_result = self.lexer.try_to_match_token(
             lexer::TokenType::KEYWORD,
             vec!["function", "let", "const", "if", "return"],
         );
 
         if let Some(token) = match_result {
-            return match token.text.as_str() {
-                "if" => self.if_stmt(),
-                "return" => self.return_stmt(),
-                "let" => self.var_decl(false),
-                "const" => self.var_decl(true),
-                "function" => self.func_decl(),
-                _ => {
-                    self.state = State::FatalError;
-                    return Err(ParsingError::Internal(InternalError::new(
-                        internal_error_msg_handle(
-                            InternalErrorTypes::LEXERINVALIDTOKENVALUE,
-                            format!("Found token {} as TokenType KEYWORD", token.text),
-                        ),
-                    )));
-                }
-            };
+            Ok(Declaration::Stmt(self.statement(&token.text)?))
         } else {
+            Ok(Declaration::Expr(self.expression()?))
         }
     }
+
+    fn statement(&mut self, token_text: &str) -> Result<Statement, ParsingError> {
+        match token_text {
+            "if" => self.if_stmt(),
+            "return" => self.return_stmt(),
+            "let" => self.var_decl(false),
+            "const" => self.var_decl(true),
+            "function" => self.func_decl(),
+            _ => {
+                self.state = State::FatalError;
+                return Err(ParsingError::Internal(InternalError::new(
+                            internal_error_msg_handle(
+                                InternalErrorTypes::LEXERINVALIDTOKENVALUE,
+                                format!("Found token {} as TokenType KEYWORD", token_text),
+                                ),
+                                )));
+            }
+        }
+    }
+
+
 
     fn func_decl(&mut self) -> Result<Statement, ParsingError> {
         let token = self.match_or_error(
@@ -335,9 +348,7 @@ impl<'a> Parser<'a> {
             body.push(self.statement()?);
         }
 
-        Ok(Statement::FuncDecl(FuncDeclStmt::new(
-            token.text, params, body,
-        )))
+        Ok(Statement::FuncDecl(FuncDeclStmt::new(token.text, params, body)))
     }
 
     // FIXME: Parse the function retorn type
